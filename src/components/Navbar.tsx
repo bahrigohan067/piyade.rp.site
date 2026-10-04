@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Shield, LogIn, ExternalLink, Menu, X, BookOpen, FileText } from 'lucide-react';
 import { DISCORD_INVITE_URL } from '@/lib/constants';
+import { getUserRoleLevel } from '@/lib/roles';
 
 interface NavbarProps {
   onOpenRules?: () => void;
@@ -20,8 +21,16 @@ export default function Navbar({ onOpenRules }: NavbarProps) {
     rpActive: true,
     rpLabel: 'ROL AKTİF (RP BAŞLADI)',
   });
+  const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.session) setSession(data.session);
+      })
+      .catch(() => {});
+
     fetch('/api/status')
       .then((res) => res.json())
       .then((data) => {
@@ -108,17 +117,36 @@ export default function Navbar({ onOpenRules }: NavbarProps) {
               <span>{erlcData.rpLabel}</span>
             </div>
 
-            {/* Discord ile Giriş Yap Butonu */}
-            <Link
-              href="/api/auth/discord"
-              className="relative group overflow-hidden rounded-xl p-[1px] font-semibold text-sm transition-all duration-300 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40"
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-xl group-hover:opacity-100 opacity-80 blur-[2px] transition-opacity" />
-              <div className="relative px-5 py-2.5 rounded-[11px] bg-[#0c0e17] text-white flex items-center gap-2 group-hover:bg-[#111422] transition-colors">
-                <LogIn className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
-                <span>Discord ile Giriş Yap</span>
-              </div>
-            </Link>
+            {/* Discord Giriş veya Aktif Panel Butonu */}
+            {session ? (
+              <Link
+                href={getUserRoleLevel(session.roles || []).redirectPath}
+                className="relative group overflow-hidden rounded-xl p-[1px] font-semibold text-sm transition-all duration-300 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-xl group-hover:opacity-100 opacity-80 blur-[2px] transition-opacity" />
+                <div className="relative px-4 py-2 rounded-[11px] bg-[#0c0e17] text-white flex items-center gap-2 group-hover:bg-[#111422] transition-colors">
+                  {session.avatar ? (
+                    <img
+                      src={`https://cdn.discordapp.com/avatars/${session.id}/${session.avatar}.png?size=64`}
+                      alt={session.username}
+                      className="w-5 h-5 rounded-full border border-white/20"
+                    />
+                  ) : null}
+                  <span className="text-xs font-bold text-blue-300">Panele Git ➔</span>
+                </div>
+              </Link>
+            ) : (
+              <Link
+                href="/api/auth/discord"
+                className="relative group overflow-hidden rounded-xl p-[1px] font-semibold text-sm transition-all duration-300 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-xl group-hover:opacity-100 opacity-80 blur-[2px] transition-opacity" />
+                <div className="relative px-5 py-2.5 rounded-[11px] bg-[#0c0e17] text-white flex items-center gap-2 group-hover:bg-[#111422] transition-colors">
+                  <LogIn className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
+                  <span>Discord ile Giriş Yap</span>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* Mobile menu trigger */}
@@ -162,14 +190,24 @@ export default function Navbar({ onOpenRules }: NavbarProps) {
             <span>Sunucu Kuralları</span>
           </a>
           <div className="pt-2">
-            <Link
-              href="/api/auth/discord"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-white flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Discord ile Giriş Yap</span>
-            </Link>
+            {session ? (
+              <Link
+                href={getUserRoleLevel(session.roles || []).redirectPath}
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-white flex items-center justify-center gap-2"
+              >
+                <span>Panele Git ➔</span>
+              </Link>
+            ) : (
+              <Link
+                href="/api/auth/discord"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-white flex items-center justify-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Discord ile Giriş Yap</span>
+              </Link>
+            )}
           </div>
         </div>
       )}

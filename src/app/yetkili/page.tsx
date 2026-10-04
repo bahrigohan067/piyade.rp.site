@@ -7,6 +7,7 @@ import {
   Ban, CheckCircle2, Lock, MessageSquare, Scale, BookOpen, LogOut, RefreshCw 
 } from 'lucide-react';
 import { RULES, ROLES } from '@/lib/constants';
+import DashboardLayout from '@/components/DashboardLayout';
 
 interface MemberRecord {
   id: string;
@@ -161,50 +162,45 @@ export default function YetkiliPaneliPage() {
   }
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <ShieldAlert className="w-6 h-6 text-amber-400" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white">Yetkili İhlal & Uyarı Masası</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
-                {isTrialStaff ? 'Trial Staff (Salt Okuma)' : 'Yetkili Kadrosu'}
-              </span>
+    <DashboardLayout session={session}>
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6 text-amber-400" />
             </div>
-            <p className="text-xs text-gray-400">Canlı Discord üyeleri, gerçek timeout/ban takibi ve ceza verme masası</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black text-white">Yetkili İhlal & Uyarı Masası</h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold">
+                  {isTrialStaff ? 'Trial Staff (Salt Okuma)' : 'Yetkili Kadrosu'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-400">Canlı Discord üyeleri, gerçek timeout/ban takibi ve ceza verme masası</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadRealMembers}
+              disabled={fetchingMembers}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
+              title="Discord Sunucusunu Yenile"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${fetchingMembers ? 'animate-spin text-blue-400' : ''}`} />
+              <span>Yenile</span>
+            </button>
+            <Link
+              href="/api/auth/logout"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Çıkış Yap</span>
+            </Link>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadRealMembers}
-            disabled={fetchingMembers}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
-            title="Discord Sunucusunu Yenile"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${fetchingMembers ? 'animate-spin text-blue-400' : ''}`} />
-            <span>Yenile</span>
-          </button>
-          <Link
-            href="/auth/select-role"
-            className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold hover:bg-purple-500/20"
-          >
-            Rol Değiştir
-          </Link>
-          <Link
-            href="/api/auth/logout"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Çıkış Yap</span>
-          </Link>
-        </div>
-      </div>
 
       {successAlert && (
         <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm flex items-center gap-3 animate-in fade-in">
@@ -532,7 +528,7 @@ export default function YetkiliPaneliPage() {
         </div>
 
       </div>
-
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

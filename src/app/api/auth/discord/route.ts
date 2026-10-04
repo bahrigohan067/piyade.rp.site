@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${baseUrl}/api/auth/callback/discord`;
 
   if (!clientId) {
-    return NextResponse.redirect(new URL('/auth/select-role', baseUrl));
+    return NextResponse.redirect(new URL('/?error=discord_client_id_missing', baseUrl));
   }
 
   const scopes = ['identify', 'guilds', 'guilds.members.read'].join(' ');

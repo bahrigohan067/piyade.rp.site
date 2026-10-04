@@ -7,6 +7,7 @@ import {
   Eye, Lock, AlertTriangle, CheckCircle2, Search, ExternalLink, LogOut, RefreshCw, Send, Shield
 } from 'lucide-react';
 import { ROLES, RULES, SAFEZONES, VALID_PARSELLER, STAFF_ROLE_TITLES } from '@/lib/constants';
+import DashboardLayout from '@/components/DashboardLayout';
 
 interface MemberRecord {
   id: string;
@@ -215,8 +216,8 @@ export default function KurucuPaneliPage() {
           <p className="text-xs text-gray-400">
             Bu panel <strong>SADECE @|👤KURUCU (ID: {ROLES.KURUCU})</strong> rolüne sahip kullanıcılar tarafından görüntülenebilir.
           </p>
-          <Link href="/auth/select-role" className="inline-block px-5 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold">
-            Kurucu Rolü ile Giriş Yap
+          <Link href="/api/auth/discord" className="inline-block px-5 py-2.5 rounded-xl bg-purple-600 text-white text-xs font-bold">
+            Discord ile Giriş Yap
           </Link>
         </div>
       </div>
@@ -224,50 +225,45 @@ export default function KurucuPaneliPage() {
   }
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-purple-600/30">
-            <Terminal className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white">Kurucu Özel Yönetim Terminali</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold">
-                @|👤 KURUCU ÖZEL
-              </span>
+    <DashboardLayout session={session}>
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-purple-600/30">
+              <Terminal className="w-6 h-6 text-white" />
             </div>
-            <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi, canlı ER:LC radarı ve çete yönetimi</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black text-white">Kurucu Özel Yönetim Terminali</h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold">
+                  @|👤 KURUCU ÖZEL
+                </span>
+              </div>
+              <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi, canlı ER:LC radarı ve çete yönetimi</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadAllData}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
+              title="Tüm Canlı Verileri Yenile"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-400' : ''}`} />
+              <span>Yenile</span>
+            </button>
+            <Link
+              href="/api/auth/logout"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Çıkış Yap</span>
+            </Link>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={loadAllData}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
-            title="Tüm Canlı Verileri Yenile"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-400' : ''}`} />
-            <span>Yenile</span>
-          </button>
-          <Link
-            href="/auth/select-role"
-            className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold hover:bg-purple-500/20"
-          >
-            Rol Değiştir
-          </Link>
-          <Link
-            href="/api/auth/logout"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Çıkış Yap</span>
-          </Link>
-        </div>
-      </div>
 
       {warnSuccess && (
         <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs sm:text-sm flex items-center gap-3">
@@ -715,6 +711,7 @@ export default function KurucuPaneliPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

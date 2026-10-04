@@ -7,6 +7,7 @@ import {
   ExternalLink, User, Search, ArrowRight, Sparkles 
 } from 'lucide-react';
 import { ROLES, REGISTRATION } from '@/lib/constants';
+import DashboardLayout from '@/components/DashboardLayout';
 
 interface RobloxUser {
   username: string;
@@ -123,41 +124,36 @@ export default function KayitPage() {
   const isAlreadyRegistered = session?.roles?.includes(ROLES.WHITELIST) && !session?.roles?.includes(REGISTRATION.KAYITSIZ_ROL);
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-3xl mx-auto">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-600/30">
-            <UserPlus className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white">Piyade RP Kayıt Masası</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
-                @| Kayıtsız Üye
-              </span>
+    <DashboardLayout session={session}>
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
+        
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-600/30">
+              <UserPlus className="w-6 h-6 text-white" />
             </div>
-            <p className="text-xs text-gray-400">Roblox hesabınızı bağlayarak sunucumuza Whitelist başvurusunda bulunun</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black text-white">Piyade RP Kayıt Masası</h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold">
+                  @| Kayıtsız Üye
+                </span>
+              </div>
+              <p className="text-xs text-gray-400">Roblox hesabınızı bağlayarak sunucumuza Whitelist başvurusunda bulunun</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/api/auth/logout"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Çıkış Yap</span>
+            </Link>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/auth/select-role"
-            className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold hover:bg-purple-500/20"
-          >
-            Rol Değiştir
-          </Link>
-          <Link
-            href="/api/auth/logout"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Çıkış Yap</span>
-          </Link>
-        </div>
-      </div>
 
       {/* Zaten Kayıtlı Uyarısı */}
       {isAlreadyRegistered && (
@@ -421,6 +417,7 @@ export default function KayitPage() {
           </form>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Shield, AlertTriangle, Users, LogOut, ExternalLink, CheckCircle2, Lock, Radio, MapPin, Send, HelpCircle } from 'lucide-react';
 import { ROLES, VALID_PARSELLER } from '@/lib/constants';
+import DashboardLayout from '@/components/DashboardLayout';
 
 interface GangColor {
   ID: string;
@@ -186,41 +187,36 @@ export default function OyuncuPaneliPage() {
   }
 
   return (
-    <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
-      
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-blue-400" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-black text-white">Oyuncu Paneli</h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
-                @| Whitelist Üye
-              </span>
+    <DashboardLayout session={session}>
+      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+        
+        {/* Top Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
+              <Shield className="w-6 h-6 text-blue-400" />
             </div>
-            <p className="text-xs text-gray-400">Canlı sunucu durumu, kişisel siciliniz ve rolleriniz</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black text-white">Oyuncu Paneli</h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                  @| Whitelist Üye
+                </span>
+              </div>
+              <p className="text-xs text-gray-400">Canlı sunucu durumu, kişisel siciliniz ve rolleriniz</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              href="/api/auth/logout"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Çıkış Yap</span>
+            </Link>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Link
-            href="/auth/select-role"
-            className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold hover:bg-purple-500/20"
-          >
-            Rol Değiştir
-          </Link>
-          <Link
-            href="/api/auth/logout"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Çıkış Yap</span>
-          </Link>
-        </div>
-      </div>
 
       {/* Sunucu Durumu (RP Aktif / Pasif - Canlı Discord Duyuru Okuması) */}
       <div className={`glass-card p-5 rounded-2xl border mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
@@ -513,6 +509,7 @@ export default function OyuncuPaneliPage() {
         </div>
       ) : null}
 
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

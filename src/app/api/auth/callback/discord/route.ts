@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   const redirectUri = `${baseUrl}/api/auth/callback/discord`;
 
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL('/auth/select-role', baseUrl));
+    return NextResponse.redirect(new URL('/?error=discord_credentials_missing', baseUrl));
   }
 
   try {
