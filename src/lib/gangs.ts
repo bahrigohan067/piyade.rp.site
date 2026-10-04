@@ -1,5 +1,4 @@
-import fs from 'fs';
-import path from 'path';
+import colorsJson from '@/data/colors.json';
 import { CHANNELS, GANG_ROLES, GUILD_ID, VALID_PARSELLER } from './constants';
 
 export interface GangColorItem {
@@ -24,21 +23,8 @@ export interface GangItem {
   roleId?: string;
 }
 
-let cachedColors: GangColorItem[] | null = null;
-
 export function getGangColors(): GangColorItem[] {
-  if (cachedColors) return cachedColors;
-  try {
-    const filePath = path.join(process.cwd(), 'src', 'data', 'colors.json');
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      cachedColors = JSON.parse(content);
-      return cachedColors || [];
-    }
-  } catch (e) {
-    console.error('Error reading colors.json:', e);
-  }
-  return [];
+  return (colorsJson as GangColorItem[]) || [];
 }
 
 export async function fetchLiveGangs(): Promise<GangItem[]> {
