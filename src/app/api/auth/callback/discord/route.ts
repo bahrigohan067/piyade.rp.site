@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GUILD_ID } from '@/lib/constants';
 import { getUserRoleLevel, UserSession } from '@/lib/auth';
 
+function getRedirectUri(request: NextRequest): string {
+  if (process.env.NEXTAUTH_URL) {
+    const base = process.env.NEXTAUTH_URL.replace(/\/$/, '');
+    return `${base}/api/auth/callback/discord`;
+  }
+  
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+  const proto = request.headers.get('x-forwarded-proto') || (host.includes('localhost') ? 'http' : 'https');
+  
+  return `${proto}://${host}/api/auth/callback/discord`;
+}
+
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const origin = request.nextUrl.origin;
@@ -13,9 +25,7 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.DISCORD_CLIENT_ID;
   const clientSecret = process.env.DISCORD_CLIENT_SECRET;
   const botToken = process.env.DISCORD_BOT_TOKEN;
-  const redirectUri = process.env.NEXTAUTH_URL 
-    ? `${process.env.NEXTAUTH_URL}/api/auth/callback/discord`
-    : `${origin}/api/auth/callback/discord`;
+  const redirectUri = getRedirectUri(request);
 
   if (!clientId || !clientSecret) {
     return NextResponse.redirect(new URL('/auth/select-role', origin));
