@@ -43,6 +43,20 @@ export default function OyuncuPaneliPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.session) {
+          const userRoles: string[] = data.session.roles || [];
+          const isStaff = userRoles.some((r) => [
+            ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
+            ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
+          ].includes(r));
+          const isWhitelist = userRoles.includes(ROLES.WHITELIST);
+          const isKayitsiz = userRoles.includes(ROLES.KAYITSIZ) || (!isWhitelist && !isStaff);
+
+          // Kayıtsız veya yetkisiz üyeler SADECE kayıt masasını görebilir
+          if (isKayitsiz && !isWhitelist && !isStaff) {
+            window.location.href = '/kayit';
+            return;
+          }
+
           setSession(data.session);
 
           // Fetch warnings for this specific user
@@ -55,24 +69,14 @@ export default function OyuncuPaneliPage() {
               }
             })
             .catch(() => {});
+          setLoading(false);
         } else {
-          setSession({
-            username: 'Misafir_Oyuncu',
-            id: '0',
-            roblox_username: 'Kayıtsız',
-            roles: [ROLES.WHITELIST],
-          });
+          // Oturum açılmamışsa Discord girişine veya rol seçimine yönlendir
+          window.location.href = '/api/auth/discord';
         }
-        setLoading(false);
       })
       .catch(() => {
-        setSession({
-          username: 'Misafir_Oyuncu',
-          id: '0',
-          roblox_username: 'Kayıtsız',
-          roles: [ROLES.WHITELIST],
-        });
-        setLoading(false);
+        window.location.href = '/api/auth/discord';
       });
 
     // 2. Fetch live RP and ER:LC status

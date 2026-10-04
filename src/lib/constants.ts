@@ -15,6 +15,20 @@ export const ROLES = {
   TRIAL_STAFF: "1551241468985737376",    // Uyarı/Timeout/Ban görür FAKAT UYARI VEREMEZ!
   WHITELIST: "1533908873772273715",      // Normal oyuncu (Kendi sicilini, rollerini, sunucu durumunu görür)
   ILLEGAL: "1539249508314259567",        // Çete menüsü ve başvurusu SADECE bu role açıktır
+  KAYITSIZ: "1542271426386591894",       // Kayıtsız rolü (Sadece kayıt panelini görür)
+};
+
+// Bot Kayıt Sistemi Sabitleri (cogs/registration.py ile birebir)
+export const REGISTRATION = {
+  KAYITSIZ_ROL: "1542271426386591894",
+  WHITELIST_ROL: "1533908873772273715",
+  UYE_ROL: "1533919249985437706",
+  ERKEK_ROL: "1534736940904218755",
+  KIZ_ROL: "1534736941600342016",
+  WHITELIST_YETKILISI_ROL: "1551242344190189718",
+  ONAY_KANAL: "1532828473972752555",
+  KAYIT_LOG_KANAL: "1552306929571733635",
+  KAYIT_KANAL: "1532831582753128530",
 };
 
 // Uyarı ve Ceza Rolleri

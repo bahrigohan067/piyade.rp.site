@@ -5,6 +5,25 @@ import Link from 'next/link';
 import { Shield, LogIn, BookOpen, Sparkles, Radio, AlertTriangle } from 'lucide-react';
 
 export default function Hero() {
+  const [rpStatus, setRpStatus] = React.useState<{ active: boolean; label: string }>({
+    active: false,
+    label: 'ROL PASİF (BEKLEMEDE)',
+  });
+
+  React.useEffect(() => {
+    fetch('/api/status')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.rpStatus) {
+          setRpStatus({
+            active: data.rpStatus.active,
+            label: data.rpStatus.active ? 'ROL RESMEN BAŞLADI' : 'ROL PASİF (BEKLEMEDE)',
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <section className="relative pt-36 pb-20 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -61,10 +80,14 @@ export default function Hero() {
           <div className="glass-card glass-card-hover p-5 sm:p-6 rounded-2xl border-white/5 relative overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sunucu Durumu</span>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className={`w-2.5 h-2.5 rounded-full ${rpStatus.active ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
             </div>
-            <div className="text-2xl sm:text-3xl font-black text-white font-mono">ÇEVRİMİÇİ</div>
-            <p className="text-xs text-emerald-400 mt-1 font-medium">ER:LC Liberty County</p>
+            <div className={`text-xl sm:text-2xl font-black font-mono ${rpStatus.active ? 'text-emerald-400' : 'text-gray-400'}`}>
+              {rpStatus.active ? 'ÇEVRİMİÇİ' : 'PASİF'}
+            </div>
+            <p className={`text-xs mt-1 font-medium ${rpStatus.active ? 'text-emerald-400' : 'text-gray-500'}`}>
+              {rpStatus.label}
+            </p>
           </div>
 
           <div className="glass-card glass-card-hover p-5 sm:p-6 rounded-2xl border-white/5 relative overflow-hidden">

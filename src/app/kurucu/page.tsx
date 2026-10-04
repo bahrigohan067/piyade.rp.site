@@ -119,21 +119,31 @@ export default function KurucuPaneliPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.session) {
+          const roles: string[] = data.session.roles || [];
+          const isKurucuRole = roles.includes(ROLES.KURUCU);
+
+          if (!isKurucuRole) {
+            const isStaff = roles.some((r) => [
+              ROLES.UST_YONETIM, ROLES.YONETICI, 
+              ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
+            ].includes(r));
+            if (isStaff) {
+              window.location.href = '/yetkili';
+            } else if (roles.includes(ROLES.WHITELIST)) {
+              window.location.href = '/panel';
+            } else {
+              window.location.href = '/kayit';
+            }
+            return;
+          }
           setSession(data.session);
+          setLoading(false);
         } else {
-          setSession({
-            username: 'Kurucu_Sahip',
-            roles: [ROLES.KURUCU, ROLES.WHITELIST],
-          });
+          window.location.href = '/api/auth/discord';
         }
-        setLoading(false);
       })
       .catch(() => {
-        setSession({
-          username: 'Kurucu_Sahip',
-          roles: [ROLES.KURUCU, ROLES.WHITELIST],
-        });
-        setLoading(false);
+        window.location.href = '/api/auth/discord';
       });
 
     loadAllData();

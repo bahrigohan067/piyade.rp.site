@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Shield, ArrowRight, Lock, Key, Users, AlertTriangle, Terminal, Sparkles } from 'lucide-react';
+import { Shield, ArrowRight, Lock, Key, Users, AlertTriangle, Terminal, Sparkles, UserPlus } from 'lucide-react';
 import { ROLES } from '@/lib/constants';
 
 export default function SelectRolePage() {
@@ -92,6 +92,17 @@ export default function SelectRolePage() {
       desc: 'Sunucu durumunu, SADECE kendi uyarısını ve kendi rollerini görür. İllegal rolü olmadığı için çete kısmı tamamen gizlidir.',
       target: '/panel',
       icon: Users,
+    },
+    {
+      roleKey: 'kayitsiz',
+      title: '@| Kayıtsız',
+      roleId: ROLES.KAYITSIZ,
+      badge: 'Sadece Kayıt Paneli Açık',
+      color: 'from-amber-600 to-emerald-600',
+      borderColor: 'border-amber-500/30',
+      desc: 'Sunucuya yeni katılmış ve sadece Kayıtsız rolüne sahip üye. SADECE kayıt masasını görür, Roblox hesabını bağlayıp bot onayına başvuru yapabilir.',
+      target: '/kayit',
+      icon: UserPlus,
     },
   ];
 

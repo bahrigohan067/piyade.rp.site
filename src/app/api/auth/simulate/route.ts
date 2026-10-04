@@ -38,6 +38,10 @@ export async function GET(request: NextRequest) {
       assignedRoles = [ROLES.WHITELIST, ROLES.ILLEGAL];
       username = 'CeteUyesi_Ahmet';
       break;
+    case 'kayitsiz':
+      assignedRoles = [ROLES.KAYITSIZ];
+      username = 'Yeni_Kayitsiz_Oyuncu';
+      break;
     case 'whitelist':
     default:
       assignedRoles = [ROLES.WHITELIST];

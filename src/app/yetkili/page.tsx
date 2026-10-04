@@ -69,21 +69,28 @@ export default function YetkiliPaneliPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.session) {
+          const roles: string[] = data.session.roles || [];
+          const isStaff = roles.some((r) => [
+            ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
+            ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
+          ].includes(r));
+
+          if (!isStaff) {
+            if (roles.includes(ROLES.WHITELIST)) {
+              window.location.href = '/panel';
+            } else {
+              window.location.href = '/kayit';
+            }
+            return;
+          }
           setSession(data.session);
+          setLoading(false);
         } else {
-          setSession({
-            username: 'SeniorStaff_Uye',
-            roles: [ROLES.SENIOR_STAFF, ROLES.WHITELIST],
-          });
+          window.location.href = '/api/auth/discord';
         }
-        setLoading(false);
       })
       .catch(() => {
-        setSession({
-          username: 'SeniorStaff_Uye',
-          roles: [ROLES.SENIOR_STAFF, ROLES.WHITELIST],
-        });
-        setLoading(false);
+        window.location.href = '/api/auth/discord';
       });
 
     loadRealMembers();
