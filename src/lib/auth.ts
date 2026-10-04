@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
 import { ROLES } from './constants';
 
 export interface UserGuild {
@@ -21,6 +22,21 @@ export interface UserSession {
   isDevSimulation?: boolean;
 }
 
+export function getBaseUrl(request?: NextRequest): string {
+  if (process.env.NEXTAUTH_URL) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, '');
+  }
+  if (request) {
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const host = forwardedHost || request.headers.get('host');
+    if (host && !host.includes('localhost:8080') && !host.includes('127.0.0.1')) {
+      const proto = request.headers.get('x-forwarded-proto') || 'https';
+      return `${proto}://${host}`;
+    }
+  }
+  return 'https://piyade-rp.up.railway.app';
+}
+
 export function getUserRoleLevel(roles: string[]) {
   const isKurucu = roles.includes(ROLES.KURUCU);
   const isUstYonetim = roles.includes(ROLES.UST_YONETIM);
@@ -31,8 +47,8 @@ export function getUserRoleLevel(roles: string[]) {
   const isWhitelist = roles.includes(ROLES.WHITELIST);
   const isIllegal = roles.includes(ROLES.ILLEGAL);
 
-  const canViewOtherGuilds = isKurucu; // SADECE KURUCU GÖREBİLİR!
-  const canIssueWarning = isKurucu || isUstYonetim || isYonetici || isSeniorStaff || isStaff; // Trial Staff veremez!
+  const canViewOtherGuilds = isKurucu;
+  const canIssueWarning = isKurucu || isUstYonetim || isYonetici || isSeniorStaff || isStaff;
   const canViewAllMembers = isKurucu || isUstYonetim || isYonetici || isSeniorStaff || isStaff || isTrialStaff;
   const canAccessIllegalGang = isIllegal;
 

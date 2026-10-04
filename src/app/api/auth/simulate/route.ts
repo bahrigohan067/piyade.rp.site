@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ROLES } from '@/lib/constants';
-import { getUserRoleLevel, UserSession } from '@/lib/auth';
+import { getBaseUrl, getUserRoleLevel, UserSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   const roleType = request.nextUrl.searchParams.get('role') || 'kurucu';
-  const origin = request.nextUrl.origin;
+  const baseUrl = getBaseUrl(request);
 
   let assignedRoles: string[] = [];
   let username = 'TestKullanici';
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
   const sessionCookieValue = Buffer.from(JSON.stringify(mockSession)).toString('base64');
 
-  const res = NextResponse.redirect(new URL(roleLevel.redirectPath, origin));
+  const res = NextResponse.redirect(new URL(roleLevel.redirectPath, baseUrl));
   res.cookies.set('piyade_session', sessionCookieValue, {
     path: '/',
     httpOnly: true,
