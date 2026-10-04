@@ -4,84 +4,115 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   Terminal, ShieldAlert, Server, Users, Radio, MapPin, 
-  Eye, Lock, AlertTriangle, CheckCircle2, Search, ExternalLink, LogOut 
+  Eye, Lock, AlertTriangle, CheckCircle2, Search, ExternalLink, LogOut, RefreshCw, Send, Shield
 } from 'lucide-react';
-import { ROLES, SAFEZONES, VALID_PARSELLER } from '@/lib/constants';
+import { ROLES, RULES, SAFEZONES, VALID_PARSELLER, STAFF_ROLE_TITLES } from '@/lib/constants';
 
-interface InspectedUser {
+interface MemberRecord {
+  id: string;
+  username: string;
+  discriminator: string;
+  globalName: string | null;
+  avatarUrl: string;
+  nickname: string;
+  name: string;
+  robloxName: string;
+  roles: string[];
+  staffTitle: string | null;
+  warningCount: number;
+  totalPoints: number;
+  warningTier: number;
+  hasJail: boolean;
+  hasYasakli: boolean;
+  timeoutRemaining: string | null;
+  isBanned: boolean;
+}
+
+interface RadarPlayer {
+  name: string;
+  id: string;
+  x: number | string;
+  y: number | string;
+  z: number | string;
+  postal: string;
+  street: string;
+  building: string;
+  safezone: string | null;
+  locationText?: string;
+}
+
+interface GangRecord {
   id: string;
   name: string;
-  robloxNick: string;
-  warningsCount: number;
-  totalPoints: number;
-  timeout: string | null;
-  isBanned: boolean;
-  totalServers: number;
-  servers: {
-    id: string;
-    name: string;
-    isOurServer: boolean;
-    isCompetitor: boolean;
-    role: string;
-  }[];
+  boss: string;
+  parsel: string;
+  warnings: number;
 }
 
 export default function KurucuPaneliPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'servers' | 'radar' | 'members' | 'gangs'>('servers');
-  const [selectedUserIndex, setSelectedUserIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [inspectedUsers] = useState<InspectedUser[]>([
-    {
-      id: '154890123984120389',
-      name: 'Alpha_Kullanici#1234',
-      robloxNick: 'Alpha | LibertyOfficer',
-      warningsCount: 1,
-      totalPoints: 3,
-      timeout: null,
-      isBanned: false,
-      totalServers: 16,
-      servers: [
-        { id: '1', name: 'ER:LC Piyadeleri (Bizim Sunucumuz)', isOurServer: true, isCompetitor: false, role: 'Üye & Whitelist' },
-        { id: '2', name: 'Liberty County Turkey RP Topluluğu', isOurServer: false, isCompetitor: true, role: 'Staff Yetkili' },
-        { id: '3', name: 'Istanbul Roleplay ERLC', isOurServer: false, isCompetitor: true, role: 'Kayıtsız' },
-        { id: '4', name: 'Roblox Developers Türkiye', isOurServer: false, isCompetitor: false, role: 'Geliştirici' },
-        { id: '5', name: 'Turkish Police Department Clan', isOurServer: false, isCompetitor: false, role: 'Üye' },
-      ],
-    },
-    {
-      id: '153920194827103984',
-      name: 'Mehmet_Efe#5678',
-      robloxNick: 'Mehmet | Efe_06',
-      warningsCount: 2,
-      totalPoints: 6,
-      timeout: '5 Saat 20 Dk',
-      isBanned: false,
-      totalServers: 22,
-      servers: [
-        { id: '1', name: 'ER:LC Piyadeleri (Bizim Sunucumuz)', isOurServer: true, isCompetitor: false, role: 'Senior Staff' },
-        { id: '2', name: 'Discord Bot Destek TR', isOurServer: false, isCompetitor: false, role: 'Üye' },
-        { id: '3', name: 'Gamer Community Turkey', isOurServer: false, isCompetitor: false, role: 'Üye' },
-      ],
-    },
-    {
-      id: '155829104829104829',
-      name: 'Karanlik_Surgun#9999',
-      robloxNick: 'Mert | Shadow_Tr',
-      warningsCount: 0,
-      totalPoints: 0,
-      timeout: null,
-      isBanned: true,
-      totalServers: 34,
-      servers: [
-        { id: '1', name: 'ER:LC Piyadeleri (Bizim Sunucumuz)', isOurServer: true, isCompetitor: false, role: 'YASAKLANDI (BAN)' },
-        { id: '2', name: 'Korsan ER:LC Sunucusu', isOurServer: false, isCompetitor: true, role: 'Kurucu' },
-        { id: '3', name: 'İllegal Reklam Grubu', isOurServer: false, isCompetitor: true, role: 'Yönetici' },
-      ],
-    },
-  ]);
+  // Live Data States
+  const [membersList, setMembersList] = useState<MemberRecord[]>([]);
+  const [selectedMember, setSelectedMember] = useState<MemberRecord | null>(null);
+  const [radarData, setRadarData] = useState<{ connected: boolean; currentPlayers: number; maxPlayers: number; players: RadarPlayer[] }>({
+    connected: false,
+    currentPlayers: 0,
+    maxPlayers: 32,
+    players: [],
+  });
+  const [gangsList, setGangsList] = useState<GangRecord[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Warning Form in Kurucu
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warnMode, setWarnMode] = useState<'madde' | 'sozlu'>('madde');
+  const [warnRuleId, setWarnRuleId] = useState('RM14');
+  const [warnReason, setWarnReason] = useState('');
+  const [warnProof, setWarnProof] = useState('');
+  const [submittingWarn, setSubmittingWarn] = useState(false);
+  const [warnSuccess, setWarnSuccess] = useState<string | null>(null);
+
+  const loadAllData = async () => {
+    setRefreshing(true);
+    try {
+      const [membersRes, radarRes, gangsRes] = await Promise.all([
+        fetch('/api/members').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/radar').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/gangs').then((r) => (r.ok ? r.json() : null)),
+      ]);
+
+      if (membersRes && membersRes.members) {
+        setMembersList(membersRes.members);
+        if (!selectedMember && membersRes.members.length > 0) {
+          setSelectedMember(membersRes.members[0]);
+        } else if (selectedMember) {
+          const updated = membersRes.members.find((m: MemberRecord) => m.id === selectedMember.id);
+          if (updated) setSelectedMember(updated);
+        }
+      }
+
+      if (radarRes) {
+        setRadarData({
+          connected: radarRes.connected || false,
+          currentPlayers: radarRes.currentPlayers || 0,
+          maxPlayers: radarRes.maxPlayers || 32,
+          players: radarRes.players || [],
+        });
+      }
+
+      if (gangsRes && gangsRes.gangs) {
+        setGangsList(gangsRes.gangs);
+      }
+    } catch (e) {
+      console.error('Error refreshing kurucu data:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -104,10 +135,56 @@ export default function KurucuPaneliPage() {
         });
         setLoading(false);
       });
+
+    loadAllData();
   }, []);
 
   const isKurucu = session?.roles?.includes(ROLES.KURUCU);
-  const currentUser = inspectedUsers[selectedUserIndex] || inspectedUsers[0];
+
+  const filteredMembers = membersList.filter(
+    (m) =>
+      m.nickname.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.robloxName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.id.includes(searchQuery)
+  );
+
+  const handleKurucuWarning = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember) return;
+    setSubmittingWarn(true);
+
+    try {
+      const res = await fetch('/api/uyari', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: warnMode,
+          targetUserId: selectedMember.id,
+          targetUsername: selectedMember.nickname,
+          ruleId: warnRuleId,
+          reason: warnReason,
+          proofUrl: warnProof,
+        }),
+      });
+
+      const d = await res.json();
+      if (res.ok) {
+        setWarnSuccess(d.message || '✅ Uyarı başarıyla Discord botuna iletildi!');
+        setWarnReason('');
+        setWarnProof('');
+        setShowWarningModal(false);
+        loadAllData();
+      } else {
+        alert(d.error || 'Hata oluştu');
+      }
+    } catch {
+      alert('İşlem sırasında hata oluştu.');
+    } finally {
+      setSubmittingWarn(false);
+      setTimeout(() => setWarnSuccess(null), 6000);
+    }
+  };
 
   if (loading) {
     return (
@@ -152,11 +229,20 @@ export default function KurucuPaneliPage() {
                 @|👤 KURUCU ÖZEL
               </span>
             </div>
-            <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi, canlı harita ve tam kontrol</p>
+            <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi, canlı ER:LC radarı ve çete yönetimi</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={loadAllData}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all"
+            title="Tüm Canlı Verileri Yenile"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-purple-400' : ''}`} />
+            <span>Yenile</span>
+          </button>
           <Link
             href="/auth/select-role"
             className="px-3.5 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold hover:bg-purple-500/20"
@@ -173,6 +259,13 @@ export default function KurucuPaneliPage() {
         </div>
       </div>
 
+      {warnSuccess && (
+        <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs sm:text-sm flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-green-400" />
+          <span>{warnSuccess}</span>
+        </div>
+      )}
+
       {/* Navigation Tabs */}
       <div className="flex flex-wrap items-center gap-2 mb-8 p-1.5 rounded-2xl bg-[#090b12] border border-white/10">
         <button
@@ -184,7 +277,7 @@ export default function KurucuPaneliPage() {
           }`}
         >
           <Server className="w-4 h-4" />
-          <span>Kullanıcıların Bulunduğu Sunucular (SADECE KURUCU)</span>
+          <span>Üye Sunucu & Sicil Denetimi (SADECE KURUCU)</span>
         </button>
 
         <button
@@ -196,7 +289,7 @@ export default function KurucuPaneliPage() {
           }`}
         >
           <Radio className="w-4 h-4 text-red-400 animate-pulse" />
-          <span>ER:LC Canlı Harita & Safezone İhlalleri</span>
+          <span>ER:LC Canlı Harita & Safezone Radarı</span>
         </button>
 
         <button
@@ -208,206 +301,410 @@ export default function KurucuPaneliPage() {
           }`}
         >
           <MapPin className="w-4 h-4 text-indigo-400" />
-          <span>Çete Parsel Yönetimi</span>
+          <span>Çete & Parsel Durumu ({gangsList.length})</span>
         </button>
       </div>
 
-      {/* TAB 1: KULLANICILARIN BULUNDUĞU SUNUCULAR */}
+      {/* TAB 1: ÜYE SUNUCU VE SİCİL DENETİMİ (SADECE KURUCU) */}
       {activeTab === 'servers' && (
         <div className="space-y-6">
           <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-200 text-xs sm:text-sm flex items-start gap-3">
             <Eye className="w-5 h-5 flex-shrink-0 text-purple-400 mt-0.5" />
             <div>
-              <strong className="text-white font-bold">Özel Kurucu Yetkisi:</strong> Bu alan kullanıcıların web sitesine Discord OAuth2 yetkisiyle bağlanırken izin verdikleri <code className="text-purple-300">guilds</code> verisini okur. <strong>Sunucuda SADECE sizin tarafınızdan görüntülenebilir.</strong> M9 kuralı ihlali (başka sunucuya üye çekme) veya rakip sunucularda yetkili olan üyeleri anında tespit edebilirsiniz.
+              <strong className="text-white font-bold">Özel Kurucu Yetkisi:</strong> Bu panelde sunucudaki her bir üyenin gerçek uyarı puanını, timeout süresini, ban durumunu ve OAuth2 ile bağlanan üyelerin diğer Discord sunucularını SADECE siz görüntüleyebilirsiniz.
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Left Member List */}
-            <div className="lg:col-span-4 space-y-3">
-              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Denetlenebilir Üye Kayıtları</div>
-              {inspectedUsers.map((user, idx) => (
-                <div
-                  key={user.id}
-                  onClick={() => setSelectedUserIndex(idx)}
-                  className={`p-4 rounded-2xl border cursor-pointer transition-all ${
-                    selectedUserIndex === idx
-                      ? 'bg-purple-600/20 border-purple-500 shadow-lg shadow-purple-600/20'
-                      : 'glass-card border-white/5 hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="font-bold text-white text-sm">{user.name}</h4>
-                    <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                      {user.totalServers} Sunucu
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-400">{user.robloxNick}</p>
-                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-gray-500">
-                    <span>{user.warningsCount} Uyarı • {user.totalPoints} Puan</span>
-                    {user.isBanned && <span className="text-red-400 font-bold">YASAKLI</span>}
-                    {user.timeout && <span className="text-orange-400 font-bold">Timeout</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Right Guilds List Details */}
-            <div className="lg:col-span-8 glass-card p-6 rounded-3xl border-white/10 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-                <div>
-                  <h3 className="text-lg font-bold text-white">{currentUser.name} — Sunucu Portföyü</h3>
-                  <p className="text-xs text-gray-400">Discord ID: {currentUser.id} • Roblox: {currentUser.robloxNick}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Toplam {currentUser.totalServers} Discord Sunucusunda
-                  </span>
-                </div>
+            {/* Sol Liste: Canlı Üyeler */}
+            <div className="lg:col-span-5 space-y-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  Canlı Üye Kayıtları ({filteredMembers.length})
+                </span>
               </div>
 
-              <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
-                {currentUser.servers.map((srv) => (
-                  <div 
-                    key={srv.id}
-                    className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${
-                      srv.isOurServer 
-                        ? 'bg-emerald-950/20 border-emerald-500/30' 
-                        : srv.isCompetitor 
-                        ? 'bg-red-950/20 border-red-500/30' 
-                        : 'bg-white/5 border-white/5'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-white text-sm">{srv.name}</h4>
-                        {srv.isCompetitor && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
-                            ⚠️ Rakip ER:LC Sunucusu
-                          </span>
-                        )}
+              {/* Arama Input */}
+              <div className="relative">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="İsim, Roblox veya ID ara..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="max-h-[580px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {filteredMembers.map((user) => {
+                  const isSelected = selectedMember?.id === user.id;
+                  return (
+                    <div
+                      key={user.id}
+                      onClick={() => setSelectedMember(user)}
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-purple-600/20 border-purple-500 shadow-lg shadow-purple-600/20'
+                          : 'glass-card border-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.nickname}
+                          className="w-10 h-10 rounded-full border border-white/10 object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-white text-xs truncate">{user.nickname}</h4>
+                            {user.isBanned ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                                YASAKLI
+                              </span>
+                            ) : user.timeoutRemaining ? (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                                {user.timeoutRemaining}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-[11px] text-gray-400 truncate">Roblox: {user.robloxName}</p>
+                          <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
+                            <span>ID: {user.id}</span>
+                            <span className="font-semibold text-purple-300">
+                              {user.warningCount} Uyarı • {user.totalPoints} Puan
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">Sunucu İçi Rolü / Konumu: <strong className="text-gray-200">{srv.role}</strong></p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Sağ Detay Kartı */}
+            <div className="lg:col-span-7 space-y-6">
+              {selectedMember ? (
+                <>
+                  <div className="glass-card p-6 rounded-3xl border-white/10 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={selectedMember.avatarUrl}
+                          alt={selectedMember.nickname}
+                          className="w-14 h-14 rounded-2xl border-2 border-purple-500/40 object-cover"
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-white">{selectedMember.nickname}</h3>
+                            {selectedMember.staffTitle && (
+                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                {selectedMember.staffTitle}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400">
+                            Kullanıcı Adı: <span className="text-gray-300">@{selectedMember.username}</span> • ID: <code className="text-purple-300">{selectedMember.id}</code>
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => setShowWarningModal(true)}
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-500 transition-all shadow-lg shadow-red-600/30"
+                      >
+                        <ShieldAlert className="w-4 h-4" />
+                        <span>Uyarı / Ceza Ver</span>
+                      </button>
                     </div>
 
-                    <div className="text-right">
-                      {srv.isOurServer ? (
-                        <span className="text-xs font-bold text-emerald-400">Bizim Sunucumuz</span>
+                    {/* Stat Kutuları */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10">
+                        <span className="text-[10px] font-bold text-gray-400 block mb-1">UYARI KADEMESİ</span>
+                        <span className="text-base font-black text-amber-400">
+                          {selectedMember.warningTier > 0 ? `Kademe ${selectedMember.warningTier}` : 'Temiz (0)'}
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10">
+                        <span className="text-[10px] font-bold text-gray-400 block mb-1">CEZA PUANI</span>
+                        <span className="text-base font-black text-red-400">{selectedMember.totalPoints} / 15 Puan</span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10">
+                        <span className="text-[10px] font-bold text-gray-400 block mb-1">TIMEOUT DURUMU</span>
+                        <span className={`text-xs font-bold block mt-1 ${selectedMember.timeoutRemaining ? 'text-orange-400' : 'text-gray-400'}`}>
+                          {selectedMember.timeoutRemaining || 'Yok (Aktif)'}
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10">
+                        <span className="text-[10px] font-bold text-gray-400 block mb-1">BAN DURUMU</span>
+                        <span className={`text-xs font-bold block mt-1 ${selectedMember.isBanned ? 'text-red-400' : 'text-green-400'}`}>
+                          {selectedMember.isBanned ? 'Yasaklı (Ban)' : 'Temiz'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Discord Rolleri */}
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                        Sahip Olduğu Discord Rolleri ({selectedMember.roles.length})
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto custom-scrollbar">
+                        {selectedMember.roles.map((rid) => (
+                          <span
+                            key={rid}
+                            className="px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 text-[11px] font-mono"
+                          >
+                            &lt;@&amp;{rid}&gt;
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sadece Kurucu'ya Özel: Kullanıcının Sunucuları */}
+                    <div className="pt-4 border-t border-white/10">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                          <Server className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Bağlı Olduğu Sunucular (Kurucuya Özel İnceleme)</span>
+                        </h4>
+                        <span className="text-[11px] text-gray-400">OAuth2 İzinli Kayıt</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 flex items-center justify-between">
+                          <div>
+                            <div className="text-xs font-bold text-white flex items-center gap-2">
+                              <span>Piyade Roleplay Topluluğu</span>
+                              <span className="px-1.5 py-0.5 rounded bg-green-500/20 text-green-300 text-[9px] font-bold">
+                                BİZİM SUNUCUMUZ
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-gray-400">ID: 1529545898294509589</span>
+                          </div>
+                          <span className="text-xs text-purple-300 font-semibold">
+                            {selectedMember.staffTitle || 'Whitelist Üye'}
+                          </span>
+                        </div>
+
+                        {selectedMember.id === session?.id && (
+                          <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between text-xs text-gray-400">
+                            <span>Giriş Yapan Kurucu Hesabı</span>
+                            <span className="text-green-400 font-bold">Aktif Oturum Doğrulandı</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="glass-card p-12 text-center text-gray-400 rounded-3xl">
+                  Lütfen soldaki listeden bir üye seçin.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: ER:LC CANLI HARİTA & RADAR */}
+      {activeTab === 'radar' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs sm:text-sm flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Radio className="w-4 h-4 text-red-400 animate-pulse" />
+              <span>
+                ER:LC Oyuncu Durumu: <strong>{radarData.players.length} Aktif Oyuncu</strong> (Maks: {radarData.maxPlayers})
+              </span>
+            </div>
+            <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">
+              {radarData.connected ? 'Canlı Bağlantı Aktif' : 'Discord Radar Takibinde'}
+            </span>
+          </div>
+
+          <div className="glass-card p-6 rounded-3xl border-white/10">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">
+              Şehirdeki Oyuncular & Koordinat Takibi ({radarData.players.length})
+            </h3>
+
+            {radarData.players.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {radarData.players.map((p, idx) => (
+                  <div key={idx} className="p-4 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-white text-sm">🟢 {p.name}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-400">
+                        Posta: {p.postal}
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-gray-400 font-mono">
+                      📍 X: {p.x} | Z: {p.z}
+                    </div>
+
+                    <div className="text-xs font-semibold">
+                      {p.safezone ? (
+                        <span className="text-green-400 font-bold">🛡️ {p.safezone}</span>
                       ) : (
-                        <span className="text-xs text-gray-500">Harici Sunucu</span>
+                        <span className="text-gray-300">{p.locationText || `${p.street} (No: ${p.building})`}</span>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: ER:LC CANLI HARİTA & SAFEZONE RADARI */}
-      {activeTab === 'radar' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {SAFEZONES.map((sz) => (
-              <div key={sz.id} className="p-4 rounded-2xl glass-card border-white/5 bg-gradient-to-b from-blue-950/20 to-transparent">
-                <span className="text-[10px] font-bold uppercase text-blue-400">{sz.type}</span>
-                <h4 className="font-bold text-white text-sm mt-1">{sz.name}</h4>
-                <p className="text-xs text-gray-400 font-mono mt-1">Posta: {sz.postal}</p>
+            ) : (
+              <div className="p-12 text-center text-gray-400 text-xs sm:text-sm">
+                Şu anda ER:LC sunucusunda aktif oyuncu bulunmamaktadır veya şehir dinlenme modundadır.
               </div>
-            ))}
-          </div>
-
-          <div className="glass-card p-6 rounded-3xl border-white/10 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Radio className="w-5 h-5 text-red-500 animate-pulse" />
-                <h3 className="font-bold text-white text-base">Aktif Oyuncu Konumları & Poligon Safezone Koruması</h3>
-              </div>
-              <span className="text-xs text-emerald-400 font-mono">15s Otomatik Canlı Senkron</span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-white/5 text-gray-400 uppercase text-[10px]">
-                  <tr>
-                    <th className="py-3 px-3">Oyuncu</th>
-                    <th className="py-3 px-3">Koordinatlar (X, Z)</th>
-                    <th className="py-3 px-3">Posta</th>
-                    <th className="py-3 px-3">Cadde / Konum</th>
-                    <th className="py-3 px-3">Bölge Durumu</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
-                  <tr className="hover:bg-white/5">
-                    <td className="py-3 px-3 font-bold text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      Ahmet_Yilmaz:12093
-                    </td>
-                    <td className="py-3 px-3 font-mono text-blue-400">X: 1105.2 | Z: 3402.1</td>
-                    <td className="py-3 px-3 font-mono">227</td>
-                    <td className="py-3 px-3">Curb (No: 2271)</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold">
-                        🛡️ Gunshop Safezone
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-white/5">
-                    <td className="py-3 px-3 font-bold text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      Murat_Kaya:84912
-                    </td>
-                    <td className="py-3 px-3 font-mono text-blue-400">X: 2890.4 | Z: 3510.6</td>
-                    <td className="py-3 px-3 font-mono">310</td>
-                    <td className="py-3 px-3">Road (No: 3102)</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-semibold">
-                        🛡️ Polis Departmanı
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            )}
           </div>
         </div>
       )}
 
       {/* TAB 3: ÇETE PARSEL YÖNETİMİ */}
       {activeTab === 'gangs' && (
-        <div className="glass-card p-6 rounded-3xl border-white/10 space-y-5">
-          <div>
-            <h3 className="text-base font-bold text-white">Çete Parsel Durumları (VALID_PARSELLER)</h3>
-            <p className="text-xs text-gray-400">Tüm 28 parselin kiralama ve doluluk haritası</p>
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs sm:text-sm">
+            Sunucudaki onaylı çetelerin parsel tahsisleri, liderleri (Boss) ve uyarı durumları burada listelenir. 3 uyarı alan çeteler bot tarafından otomatik kapatılır.
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-3">
-            {VALID_PARSELLER.map((p) => {
-              const isOccupied = ['701', '1104', '600', '805'].includes(p);
-              return (
-                <div 
-                  key={p}
-                  className={`p-3.5 rounded-2xl border text-center transition-all ${
-                    isOccupied 
-                      ? 'bg-purple-950/30 border-purple-500/50 text-purple-300' 
-                      : 'bg-white/5 border-white/10 text-gray-400'
-                  }`}
-                >
-                  <span className="text-[10px] uppercase font-bold text-gray-500">Parsel</span>
-                  <div className="text-base font-black text-white font-mono mt-0.5">#{p}</div>
-                  <div className="text-[10px] font-semibold mt-1">
-                    {isOccupied ? 'DOLU (Çete)' : 'Boş / Müsait'}
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {gangsList.map((gang) => (
+              <div key={gang.id} className="glass-card p-5 rounded-2xl border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-bold text-white">{gang.name}</h4>
+                  <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs font-mono font-bold">
+                    Parsel: {gang.parsel}
+                  </span>
                 </div>
-              );
-            })}
+                <div className="text-xs text-gray-400">
+                  Lider (Boss): <span className="text-gray-200 font-semibold">&lt;@{gang.boss}&gt;</span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
+                  <span className="text-gray-400">Uyarı Kademesi:</span>
+                  <span className={`font-bold ${gang.warnings >= 2 ? 'text-red-400' : 'text-amber-400'}`}>
+                    {gang.warnings} / 3 Uyarı
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {gangsList.length === 0 && (
+              <div className="col-span-full glass-card p-12 text-center text-gray-400">
+                Şu anda sunucuda kayıtlı aktif çete bulunmuyor veya bot henüz çete oluşturmadı.
+              </div>
+            )}
           </div>
         </div>
       )}
 
+      {/* Modal: Uyarı Verme */}
+      {showWarningModal && selectedMember && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card p-6 rounded-3xl border-purple-500/30 max-w-lg w-full space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-red-400" />
+                <span>Ceza / Uyarı Masası</span>
+              </h3>
+              <button
+                onClick={() => setShowWarningModal(false)}
+                className="text-gray-400 hover:text-white text-xs font-bold"
+              >
+                Kapat
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-300">
+              Hedef: <strong>{selectedMember.nickname}</strong> (&lt;@{selectedMember.id}&gt;)
+            </p>
+
+            <form onSubmit={handleKurucuWarning} className="space-y-4">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWarnMode('madde')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    warnMode === 'madde' ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  Kural Maddesi ile Uyarı
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWarnMode('sozlu')}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                    warnMode === 'sozlu' ? 'bg-amber-600 text-white' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  Sözlü Uyarı
+                </button>
+              </div>
+
+              {warnMode === 'madde' && (
+                <div>
+                  <label className="text-[11px] font-bold text-gray-400 block mb-1">Kural Maddesi Seçin</label>
+                  <select
+                    value={warnRuleId}
+                    onChange={(e) => setWarnRuleId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/10 text-white text-xs"
+                  >
+                    {RULES.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.id} — {r.description} ({r.points > 0 ? `+${r.points} Puan` : r.special})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-400 block mb-1">Açıklama / Sebep</label>
+                <textarea
+                  rows={3}
+                  value={warnReason}
+                  onChange={(e) => setWarnReason(e.target.value)}
+                  placeholder="İhlal detayını belirtiniz..."
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder:text-gray-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-gray-400 block mb-1">Kanıt Linki (Opsiyonel)</label>
+                <input
+                  type="url"
+                  value={warnProof}
+                  onChange={(e) => setWarnProof(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder:text-gray-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWarningModal(false)}
+                  className="px-4 py-2 rounded-xl bg-white/10 text-gray-300 text-xs font-bold"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingWarn}
+                  className="px-5 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-500 disabled:opacity-50"
+                >
+                  {submittingWarn ? 'İşleniyor...' : 'Discord Botuna Gönder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

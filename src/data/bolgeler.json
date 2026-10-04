@@ -1,0 +1,138 @@
+{
+  "gun_shop": {
+    "name": "Gunshop Etkileşimli Bölge (Safezone)",
+    "type": "safezone_and_shop",
+    "postal_codes": [
+      "227"
+    ],
+    "points": [
+      {
+        "x": 1095.33,
+        "z": 3411.18,
+        "postal_code": "227",
+        "street": "Curb (No: 2271)"
+      },
+      {
+        "x": 1118.24,
+        "z": 3408.05,
+        "postal_code": "227",
+        "street": "Curb (No: 2271)"
+      },
+      {
+        "x": 1129.06,
+        "z": 3388.36,
+        "postal_code": "227",
+        "street": "Curb (No: 2271)"
+      },
+      {
+        "x": 1110.77,
+        "z": 3395.14,
+        "postal_code": "227",
+        "street": "Curb (No: 2271)"
+      }
+    ]
+  },
+  "police_department": {
+    "name": "Polis Departmanı (Safezone)",
+    "type": "safezone",
+    "postal_codes": [
+      "317",
+      "310",
+      "316"
+    ],
+    "points": [
+      {
+        "x": 2946.46,
+        "z": 3474.49,
+        "postal_code": "317",
+        "street": "CollisionPart_Curb (No: 3171)"
+      },
+      {
+        "x": 2945.49,
+        "z": 3559.07,
+        "postal_code": "310",
+        "street": "CollisionPart_Curb (No: 3102)"
+      },
+      {
+        "x": 2809.82,
+        "z": 3562.42,
+        "postal_code": "316",
+        "street": "Road (No: 3161)"
+      },
+      {
+        "x": 2811.28,
+        "z": 3473.87,
+        "postal_code": "316",
+        "street": "Road (No: 3161)"
+      }
+    ]
+  },
+  "fire_department": {
+    "name": "Fire Departman (Safezone)",
+    "type": "safezone",
+    "postal_codes": [
+      "228",
+      "229"
+    ],
+    "points": [
+      {
+        "x": 1358.66,
+        "z": 3370.96,
+        "postal_code": "229",
+        "street": "Curb (No: 2282)"
+      },
+      {
+        "x": 1284.1,
+        "z": 3306.45,
+        "postal_code": "228",
+        "street": "Curb (No: 2283)"
+      },
+      {
+        "x": 1207.34,
+        "z": 3440.44,
+        "postal_code": "228",
+        "street": "Curb (No: 2281)"
+      },
+      {
+        "x": 1317.57,
+        "z": 3459.93,
+        "postal_code": "228",
+        "street": "Curb (No: 2281)"
+      }
+    ]
+  },
+  "city_spawn": {
+    "name": "City Spawn (Safezone)",
+    "type": "safezone",
+    "postal_codes": [
+      "210",
+      "211"
+    ],
+    "points": [
+      {
+        "x": 1465.45,
+        "z": 3935.5,
+        "postal_code": "210",
+        "street": "CurbRight (No: 2101)"
+      },
+      {
+        "x": 1616.43,
+        "z": 3933.91,
+        "postal_code": "211",
+        "street": "CollisionPart_Curb (No: 2083)"
+      },
+      {
+        "x": 1615.94,
+        "z": 3845.71,
+        "postal_code": "211",
+        "street": "Line (No: 2111)"
+      },
+      {
+        "x": 1464.1,
+        "z": 3843.23,
+        "postal_code": "210",
+        "street": "RoadAlignmentIndicator_Left (No: 2101)"
+      }
+    ]
+  }
+}

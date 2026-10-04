@@ -28,11 +28,46 @@ export const PUNISHMENT_ROLES = {
   YASAKLI: "1534715583826759790",  // M9 Özel ceza
 };
 
-// Kanal ID'leri
+export const YETKILI_UYARI_ROLES = {
+  YETKILI_UYARI_1: "1551287340444549191",
+  YETKILI_UYARI_2: "1551287502667776130",
+  YETKILI_UYARI_3: "1551287599983755405",
+};
+
+export const GANG_ROLES = {
+  BOSS: "1551552841716334592",
+  UNDERBOSS: "1551553107492601876",
+  INFAZ: "1544777693030125720",
+  ILLEGAL: "1539249508314259567",
+};
+
+export const STAFF_ROLE_TITLES: Record<string, string> = {
+  "1529546007635824680": "Kurucu",
+  "1539167256246747186": "Üst Yönetim",
+  "1534798061845483694": "Yönetici",
+  "1537934087166369812": "Yönetim Ekibi",
+  "1551241753137254611": "Senior Staff",
+  "1551241634094645288": "Staff",
+  "1551241468985737376": "Trial Staff",
+  "1542249243702726796": "Mesaj Denetimcisi",
+  "1547526649459777556": "Ses Kanalı Yetkilisi",
+  "1543075759508164659": "Takma Ad Yetkilisi",
+  "1551242344190189718": "Whitelist Yetkilisi",
+};
+
+// Bot ile Tam Uyumlu Kanal ID'leri
 export const CHANNELS = {
   UYARILAR: "1532828434739368149",
   SICIL_LOG: "1532828404347437287",
   DUYURU: "1554103929451581460",
+  PANEL: "1554037075563651182",
+  RADAR: "1553721461389266974",
+  RDM_LOG: "1554099605837185044",
+  GANG_LOG: "1551547117024190474",
+  GANG_BILDIRIM: "1551964863725838346",
+  ADMIN_GANG_PANEL: "1551996894597750897",
+  GANG_WARNING: "1551369739878539364",
+  DETAILED_GANG_LOG: "1554830631408504842",
 };
 
 // ==========================================
@@ -190,6 +225,14 @@ export const RULES: RuleItem[] = [
   { id: "RM15", points: 1, description: "Kaza RP Yapmama", category: "roleplay" },
   { id: "RM16", points: 2, description: "Refuse RP (Rolü Reddetmek)", category: "roleplay" },
   { id: "RM17", points: 5, description: "Abuse (Oyun Açığı Suistimali)", category: "roleplay" },
+];
+
+export const YETKILI_MADDELER = [
+  { id: "Y1", description: "Yetkisini kendi lehine kullanmak.", special: "TÜM YETKİLERİ ALINDI (Y1 - Direkt)" },
+  { id: "Y2", description: "Sunucudaki katılımcıyı yanlış yönlendirmek.", special: "Yetkili Uyarı +1" },
+  { id: "Y3", description: "Yanlış işlem yapmak. (Örn: Yanlış uyarı vermek)", special: "Yetkili Uyarı +1" },
+  { id: "Y4", description: "Sunucuda kendini üstün görmek.", special: "Yetkili Uyarı +1" },
+  { id: "Y5", description: "Kendinden üst kademeli yetkililerin yönlendirmesini dinlememek/takmamak.", special: "Yetkili Uyarı +1" },
 ];
 
 export const VALID_PARSELLER = [
