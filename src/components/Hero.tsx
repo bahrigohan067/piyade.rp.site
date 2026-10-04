@@ -1,25 +1,22 @@
 'use client';
 
 import React from 'react';
-import { Shield, Users, Radio, AlertTriangle, ArrowRight, Terminal, Sparkles, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { Shield, LogIn, BookOpen, Sparkles, Radio, AlertTriangle } from 'lucide-react';
 
-interface HeroProps {
-  onOpenDemo: (type: 'user' | 'staff' | 'admin') => void;
-}
-
-export default function Hero({ onOpenDemo }: HeroProps) {
+export default function Hero() {
   return (
-    <section className="relative pt-32 pb-20 overflow-hidden">
+    <section className="relative pt-36 pb-20 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Top Announcement Pill */}
         <div className="flex justify-center mb-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card border-blue-500/30 text-xs sm:text-sm text-gray-300 shadow-lg shadow-blue-500/10">
             <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-ping" />
-            <span className="font-semibold text-white">Piyade RP 2.0 Web Entegrasyonu</span>
+            <span className="font-semibold text-white">Piyade Roleplay Web Portalı</span>
             <span className="text-gray-500">|</span>
             <span className="text-blue-400 font-medium flex items-center gap-1">
-              Canlı Bot & Radar Aktif
+              Yetkili & Oyuncu Senkronu
               <Sparkles className="w-3.5 h-3.5 text-blue-400" />
             </span>
           </div>
@@ -39,32 +36,23 @@ export default function Hero({ onOpenDemo }: HeroProps) {
           </p>
         </div>
 
-        {/* Action Buttons */}
+        {/* Primary Action Button: ONLY Discord Giriş & Kurallar */}
         <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
-          <button
-            onClick={() => onOpenDemo('user')}
-            className="px-6 sm:px-8 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm sm:text-base shadow-xl shadow-blue-600/25 flex items-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          <Link
+            href="/api/auth/discord"
+            className="px-8 sm:px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-base shadow-2xl shadow-blue-600/30 flex items-center gap-3 transition-all hover:scale-105 active:scale-95"
           >
-            <Users className="w-4 h-4" />
-            <span>Oyuncu Panelim</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </button>
+            <LogIn className="w-5 h-5 text-blue-200" />
+            <span>Discord ile Giriş Yap</span>
+          </Link>
 
-          <button
-            onClick={() => onOpenDemo('staff')}
-            className="px-6 sm:px-8 py-3.5 rounded-2xl glass-card hover:bg-white/10 text-white font-bold text-sm sm:text-base border border-amber-500/30 flex items-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          <a
+            href="#kurallar"
+            className="px-7 py-4 rounded-2xl glass-card hover:bg-white/10 text-gray-200 font-bold text-base border border-white/10 flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95"
           >
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <span>Yetkili Paneli (Uyarı Gir)</span>
-          </button>
-
-          <button
-            onClick={() => onOpenDemo('admin')}
-            className="px-6 sm:px-8 py-3.5 rounded-2xl glass-card hover:bg-white/10 text-purple-300 font-bold text-sm sm:text-base border border-purple-500/30 flex items-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
-          >
-            <Terminal className="w-4 h-4 text-purple-400" />
-            <span>Bana Özel Yönetim</span>
-          </button>
+            <BookOpen className="w-5 h-5 text-blue-400" />
+            <span>Sunucu Kuralları</span>
+          </a>
         </div>
 
         {/* Live Metrics Grid */}
@@ -99,7 +87,7 @@ export default function Hero({ onOpenDemo }: HeroProps) {
 
           <div className="glass-card glass-card-hover p-5 sm:p-6 rounded-2xl border-white/5 relative overflow-hidden">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Aktif Parseller</span>
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mülkiyet</span>
               <Radio className="w-4 h-4 text-purple-400" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white font-mono">28 PARSEL</div>
