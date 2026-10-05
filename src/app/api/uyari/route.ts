@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CHANNELS, GUILD_ID, PUNISHMENT_ROLES, RULES, STAFF_ROLE_TITLES, YETKILI_MADDELER } from '@/lib/constants';
 import { getSession, getUserRoleLevel } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 function generateUyariId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -29,6 +30,12 @@ export async function POST(request: NextRequest) {
   const roleLevel = getUserRoleLevel(session.roles);
   if (!roleLevel.canIssueWarning) {
     return NextResponse.json({ error: 'Uyarı verme yetkiniz bulunmamaktadır (Trial Staff uyarı veremez).' }, { status: 403 });
+  }
+
+  // Rate Limiting: Max 10 warnings per minute per staff member
+  const rl = checkRateLimit(`uyari_${session.id}`, { limit: 10, windowMs: 60 * 1000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: 'Çok hızlı işlem yapıyorsunuz. Lütfen 1 dakika bekleyiniz.' }, { status: 429 });
   }
 
   const botToken = process.env.DISCORD_BOT_TOKEN;

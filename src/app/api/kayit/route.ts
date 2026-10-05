@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { REGISTRATION } from '@/lib/constants';
 import { findRobloxUser } from '@/lib/roblox';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: 'Başvuru yapabilmek için Discord ile giriş yapmalısınız.' }, { status: 401 });
+  }
+
+  // Rate Limiting: Max 5 submissions per 5 minutes per user
+  const rl = checkRateLimit(`kayit_${session.id}`, { limit: 5, windowMs: 5 * 60 * 1000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Çok fazla kayıt denemesi yaptınız. Lütfen 5 dakika sonra tekrar deneyiniz.' },
+      { status: 429 }
+    );
   }
 
   const botToken = process.env.DISCORD_BOT_TOKEN;
@@ -16,17 +26,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { gercekAd, robloxLink, cinsiyet } = body;
+    let { gercekAd, robloxLink, cinsiyet } = body;
 
-    if (!gercekAd || !gercekAd.trim()) {
-      return NextResponse.json({ error: 'Lütfen gerçek adınızı giriniz.' }, { status: 400 });
+    gercekAd = typeof gercekAd === 'string' ? gercekAd.trim().slice(0, 50) : '';
+    robloxLink = typeof robloxLink === 'string' ? robloxLink.trim().slice(0, 200) : '';
+    cinsiyet = typeof cinsiyet === 'string' ? cinsiyet.trim().toLowerCase() : '';
+
+    if (!gercekAd) {
+      return NextResponse.json({ error: 'Lütfen gerçek adınızı giriniz (en fazla 50 karakter).' }, { status: 400 });
     }
 
-    if (!robloxLink || !robloxLink.trim()) {
+    if (!robloxLink) {
       return NextResponse.json({ error: 'Lütfen Roblox hesap adınızı, ID numaranızı veya profil linkinizi giriniz.' }, { status: 400 });
     }
 
-    if (!cinsiyet || !['erkek', 'kız', 'kiz'].includes(cinsiyet.toLowerCase().trim())) {
+    if (!['erkek', 'kız', 'kiz'].includes(cinsiyet)) {
       return NextResponse.json({ error: 'Lütfen cinsiyetinizi Erkek veya Kız olarak seçiniz.' }, { status: 400 });
     }
 

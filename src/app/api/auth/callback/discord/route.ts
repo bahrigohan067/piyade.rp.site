@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
 
     const roleLevel = getUserRoleLevel(memberRoles);
 
-    // 5. Create Session Object
+    // 5. Create Session Object (lean, guaranteed < 500 bytes to prevent 4096-byte cookie drop)
     const session: UserSession = {
       id: userData.id,
       username: userData.username,
@@ -96,13 +96,6 @@ export async function GET(request: NextRequest) {
       avatar: userData.avatar,
       roblox_username: robloxUsername || userData.username,
       roles: memberRoles,
-      guilds: userGuilds.map((g: any) => ({
-        id: g.id,
-        name: g.name,
-        icon: g.icon,
-        owner: g.owner,
-        permissions: g.permissions,
-      })),
     };
 
     const sessionCookieValue = Buffer.from(JSON.stringify(session)).toString('base64');
@@ -112,6 +105,7 @@ export async function GET(request: NextRequest) {
       path: '/',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 

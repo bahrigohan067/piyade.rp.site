@@ -6,7 +6,7 @@ import {
   Terminal, ShieldAlert, Server, Users, Radio, MapPin, 
   Eye, Lock, AlertTriangle, CheckCircle2, Search, ExternalLink, LogOut, RefreshCw, Send, Shield
 } from 'lucide-react';
-import { ROLES, RULES, SAFEZONES, VALID_PARSELLER, STAFF_ROLE_TITLES } from '@/lib/constants';
+import { ROLES, RULES, SAFEZONES, STAFF_ROLE_TITLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
 
 interface MemberRecord {
@@ -42,18 +42,10 @@ interface RadarPlayer {
   locationText?: string;
 }
 
-interface GangRecord {
-  id: string;
-  name: string;
-  boss: string;
-  parsel: string;
-  warnings: number;
-}
-
 export default function KurucuPaneliPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'servers' | 'radar' | 'members' | 'gangs'>('servers');
+  const [activeTab, setActiveTab] = useState<'servers' | 'radar'>('servers');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Live Data States
@@ -65,7 +57,6 @@ export default function KurucuPaneliPage() {
     maxPlayers: 32,
     players: [],
   });
-  const [gangsList, setGangsList] = useState<GangRecord[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   // Warning Form in Kurucu
@@ -80,10 +71,9 @@ export default function KurucuPaneliPage() {
   const loadAllData = async () => {
     setRefreshing(true);
     try {
-      const [membersRes, radarRes, gangsRes] = await Promise.all([
+      const [membersRes, radarRes] = await Promise.all([
         fetch('/api/members').then((r) => (r.ok ? r.json() : null)),
         fetch('/api/radar').then((r) => (r.ok ? r.json() : null)),
-        fetch('/api/gangs').then((r) => (r.ok ? r.json() : null)),
       ]);
 
       if (membersRes && membersRes.members) {
@@ -103,10 +93,6 @@ export default function KurucuPaneliPage() {
           maxPlayers: radarRes.maxPlayers || 32,
           players: radarRes.players || [],
         });
-      }
-
-      if (gangsRes && gangsRes.gangs) {
-        setGangsList(gangsRes.gangs);
       }
     } catch (e) {
       console.error('Error refreshing kurucu data:', e);
@@ -296,18 +282,6 @@ export default function KurucuPaneliPage() {
         >
           <Radio className="w-4 h-4 text-red-400 animate-pulse" />
           <span>ER:LC Canlı Harita & Safezone Radarı</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('gangs')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-            activeTab === 'gangs'
-              ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          <MapPin className="w-4 h-4 text-indigo-400" />
-          <span>Çete & Parsel Durumu ({gangsList.length})</span>
         </button>
       </div>
 
@@ -565,43 +539,6 @@ export default function KurucuPaneliPage() {
             ) : (
               <div className="p-12 text-center text-gray-400 text-xs sm:text-sm">
                 Şu anda ER:LC sunucusunda aktif oyuncu bulunmamaktadır veya şehir dinlenme modundadır.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ÇETE PARSEL YÖNETİMİ */}
-      {activeTab === 'gangs' && (
-        <div className="space-y-6">
-          <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs sm:text-sm">
-            Sunucudaki onaylı çetelerin parsel tahsisleri, liderleri (Boss) ve uyarı durumları burada listelenir. 3 uyarı alan çeteler bot tarafından otomatik kapatılır.
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {gangsList.map((gang) => (
-              <div key={gang.id} className="glass-card p-5 rounded-2xl border-white/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-base font-bold text-white">{gang.name}</h4>
-                  <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs font-mono font-bold">
-                    Parsel: {gang.parsel}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-400">
-                  Lider (Boss): <span className="text-gray-200 font-semibold">&lt;@{gang.boss}&gt;</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-                  <span className="text-gray-400">Uyarı Kademesi:</span>
-                  <span className={`font-bold ${gang.warnings >= 2 ? 'text-red-400' : 'text-amber-400'}`}>
-                    {gang.warnings} / 3 Uyarı
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {gangsList.length === 0 && (
-              <div className="col-span-full glass-card p-12 text-center text-gray-400">
-                Şu anda sunucuda kayıtlı aktif çete bulunmuyor veya bot henüz çete oluşturmadı.
               </div>
             )}
           </div>

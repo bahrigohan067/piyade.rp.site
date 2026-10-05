@@ -1,0 +1,22 @@
+# Piyade Roleplay (PİYADE.RP) Web Portalı & Discord Entegrasyonu
+> Piyade Roleplay, Roblox Emergency Response: Liberty County (ER:LC) platformu üzerinde faaliyet gösteren seçkin, Hard-RP odaklı Türk roleplay topluluğudur.
+
+## Genel Bilgiler
+- **Web Sitesi:** https://piyade-rp.up.railway.app
+- **Discord Sunucusu:** https://discord.gg/9QGAZB54Br
+- **Roblox Grup ID:** 860635623 (PRP Topluluğu)
+- **Sunucu Türü:** Roblox ER:LC Özel Topluluk Sunucusu (Whitelist Zorunlu)
+
+## Temel Özellikler
+1. **Discord OAuth2 Entegrasyonu:** Kullanıcıların yetkilerine göre (Kurucu, Üst Yönetim, Yönetici, Senior Staff, Staff, Trial Staff, Whitelist, Kayıtsız) dinamik menü ve yetki masaları sunulur.
+2. **Kayıt Masası:** Yeni kullanıcılar Discord ile oturum açtıktan sonra gerçek isim, Roblox hesabı ve cinsiyet belirterek başvuru yapar. Bot, Roblox API üzerinden hesabı doğrular ve Discord onay kanalına interaktif butonlu embed gönderir.
+3. **Canlı Sunucu & Rol Durumu:** Discord botunun duyuru kanalındaki "🚨 DİKKAT: ROL RESMEN BAŞLADI!" mesajı otomatik algılanarak sunucu durumu aktif hale gelir.
+4. **Oyuncu Ceza & Sicil Takibi:** 15 puanlık ceza puanı sınırı (Kademe 1-5). 15 puana ulaşan oyunculara Jail cezası uygulanır.
+5. **Yetkili Masası:** Yetkililer (Trial Staff hariç) M1-M17 kural maddelerine göre veya sözlü olarak üyelere ceza tanımlayabilir; bot anında #uyarılar ve #sicil-log kanallarına resmi embed yollar.
+6. **Kurucu Özel Terminali:** Yalnızca @|👤KURUCU rolüne sahip hesaplar tüm sunucu üyelerinin detaylı sicilini, ban/timeout durumunu ve üye denetimini gerçekleştirebilir.
+
+## Güvenlik ve Uyumluluk
+- HttpOnly, SameSite=Lax, Secure oturum çerezleri (< 500 bayt).
+- Katı sunucu taraflı yetkilendirme (Server-side RBAC).
+- HSTS, X-Frame-Options, X-Content-Type-Options güvenlik başlıkları.
+- Rate limiting ve XSS koruması.

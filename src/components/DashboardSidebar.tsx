@@ -233,24 +233,6 @@ export default function DashboardSidebar({ session, currentPath, onCloseMobile }
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
                 </Link>
-
-                {/* SADECE @| İllegal Rolüne Sahipse Çete Sekmesi Görünür! */}
-                {roleLevel.canAccessIllegalGang && (
-                  <Link
-                    href="/panel#cete"
-                    onClick={onCloseMobile}
-                    className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-purple-300 hover:text-white hover:bg-purple-500/10 border border-purple-500/20 transition-all"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Flame className="w-4 h-4 text-purple-400" />
-                      <div>
-                        <span>İllegal Çete & Parsel</span>
-                        <p className="text-[10px] font-normal text-purple-400/70">Bölge & Çete Başvurusu</p>
-                      </div>
-                    </div>
-                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-[9px] text-purple-300">İllegal</span>
-                  </Link>
-                )}
               </div>
             </div>
           )}
