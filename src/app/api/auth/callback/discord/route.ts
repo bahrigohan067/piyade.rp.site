@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GUILD_ID } from '@/lib/constants';
 import { getBaseUrl, getUserRoleLevel, UserSession } from '@/lib/auth';
+import { saveOrUpdateUser } from '@/lib/userStore';
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
@@ -87,8 +88,8 @@ export async function GET(request: NextRequest) {
 
     const roleLevel = getUserRoleLevel(memberRoles);
 
-    // 5. Create Session Object (lean, guaranteed < 500 bytes to prevent 4096-byte cookie drop)
-    const session: UserSession = {
+    // 5. Save or update user in persistent userStore (saved to Railway volume /data/users.json)
+    const storedUser = saveOrUpdateUser({
       id: userData.id,
       username: userData.username,
       discriminator: userData.discriminator,
@@ -96,9 +97,27 @@ export async function GET(request: NextRequest) {
       avatar: userData.avatar,
       roblox_username: robloxUsername || userData.username,
       roles: memberRoles,
+      guilds: userGuilds.map((g: any) => ({
+        id: g.id,
+        name: g.name,
+        icon: g.icon,
+        owner: g.owner,
+        permissions: g.permissions,
+      })),
+    });
+
+    // 6. Set lean session cookie pointing to the stored user record (valid for 1 year!)
+    const sessionCookiePayload = {
+      id: storedUser.id,
+      sessionToken: storedUser.sessionToken,
+      username: storedUser.username,
+      discriminator: storedUser.discriminator,
+      avatar: storedUser.avatar,
+      roblox_username: storedUser.roblox_username,
+      roles: storedUser.roles,
     };
 
-    const sessionCookieValue = Buffer.from(JSON.stringify(session)).toString('base64');
+    const sessionCookieValue = Buffer.from(JSON.stringify(sessionCookiePayload)).toString('base64');
 
     const res = NextResponse.redirect(new URL(roleLevel.redirectPath, baseUrl));
     res.cookies.set('piyade_session', sessionCookieValue, {
@@ -106,7 +125,7 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 365, // 1 Full Year (User will NEVER be asked to log in again!)
     });
 
     return res;
