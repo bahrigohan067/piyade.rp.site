@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBaseUrl } from '@/lib/auth';
+import { getBaseUrl, getSession, getUserRoleLevel } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  const clientId = process.env.DISCORD_CLIENT_ID;
   const baseUrl = getBaseUrl(request);
+
+  // If already authenticated with active session, redirect straight to panel
+  const session = await getSession(request);
+  if (session && session.id) {
+    const roleLevel = getUserRoleLevel(session.roles || []);
+    return NextResponse.redirect(new URL(roleLevel.redirectPath, baseUrl));
+  }
+
+  const clientId = process.env.DISCORD_CLIENT_ID;
   const redirectUri = `${baseUrl}/api/auth/callback/discord`;
 
   if (!clientId) {

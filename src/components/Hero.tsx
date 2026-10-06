@@ -114,7 +114,7 @@ export default function Hero() {
               <Radio className="w-4 h-4 text-purple-400" />
             </div>
             <div className="text-2xl sm:text-3xl font-black text-white font-mono">28 PARSEL</div>
-            <p className="text-xs text-purple-400 mt-1 font-medium">Çete & Bölge Hakimiyeti</p>
+            <p className="text-xs text-purple-400 mt-1 font-medium">Bölge & Şehir Hakimiyeti</p>
           </div>
 
         </div>

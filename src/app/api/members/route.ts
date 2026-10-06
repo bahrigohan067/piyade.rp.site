@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { fetchGuildMembers } from '@/lib/discord';
 import { getSession, getUserRoleLevel } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const session = await getSession();
+export async function GET(request: NextRequest) {
+  const session = await getSession(request);
   if (!session) {
     return NextResponse.json({ error: 'Giriş yapılmadı' }, { status: 401 });
   }

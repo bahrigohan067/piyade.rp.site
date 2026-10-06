@@ -22,7 +22,7 @@ function calculateTier(points: number): number {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return NextResponse.json({ error: 'Giriş yapmalısınız.' }, { status: 401 });
   }

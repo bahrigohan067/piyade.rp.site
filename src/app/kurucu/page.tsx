@@ -67,6 +67,7 @@ export default function KurucuPaneliPage() {
   const [warnProof, setWarnProof] = useState('');
   const [submittingWarn, setSubmittingWarn] = useState(false);
   const [warnSuccess, setWarnSuccess] = useState<string | null>(null);
+  const [warnError, setWarnError] = useState<string | null>(null);
 
   const loadAllData = async () => {
     setRefreshing(true);
@@ -150,11 +151,17 @@ export default function KurucuPaneliPage() {
     e.preventDefault();
     if (!selectedMember) return;
     setSubmittingWarn(true);
+    setWarnError(null);
 
     try {
       const res = await fetch('/api/uyari', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.sessionToken ? { 'x-session-token': session.sessionToken } : {}),
+          ...(session?.id ? { 'x-user-id': session.id } : {}),
+        },
+        credentials: 'include',
         body: JSON.stringify({
           type: warnMode,
           targetUserId: selectedMember.id,
@@ -173,13 +180,16 @@ export default function KurucuPaneliPage() {
         setShowWarningModal(false);
         loadAllData();
       } else {
-        alert(d.error || 'Hata oluştu');
+        setWarnError(d.error || 'Hata oluştu.');
       }
     } catch {
-      alert('İşlem sırasında hata oluştu.');
+      setWarnError('İşlem sırasında bağlantı hatası oluştu.');
     } finally {
       setSubmittingWarn(false);
-      setTimeout(() => setWarnSuccess(null), 6000);
+      setTimeout(() => {
+        setWarnSuccess(null);
+        setWarnError(null);
+      }, 6000);
     }
   };
 
@@ -227,7 +237,7 @@ export default function KurucuPaneliPage() {
                   @|👤 KURUCU ÖZEL
                 </span>
               </div>
-              <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi, canlı ER:LC radarı ve çete yönetimi</p>
+              <p className="text-xs text-gray-400">Sadece Kurucu'nun görebileceği derin üye sunucu denetimi ve canlı ER:LC radarı</p>
             </div>
           </div>
 
@@ -252,9 +262,16 @@ export default function KurucuPaneliPage() {
         </div>
 
       {warnSuccess && (
-        <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs sm:text-sm flex items-center gap-3">
+        <div className="mb-6 p-4 rounded-2xl bg-green-500/10 border border-green-500/30 text-green-300 text-xs sm:text-sm flex items-center gap-3 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-green-400" />
           <span>{warnSuccess}</span>
+        </div>
+      )}
+
+      {warnError && (
+        <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs sm:text-sm flex items-center gap-3 animate-in fade-in">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400" />
+          <span>{warnError}</span>
         </div>
       )}
 
@@ -565,6 +582,13 @@ export default function KurucuPaneliPage() {
             <p className="text-xs text-gray-300">
               Hedef: <strong>{selectedMember.nickname}</strong> (&lt;@{selectedMember.id}&gt;)
             </p>
+
+            {warnError && (
+              <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{warnError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleKurucuWarning} className="space-y-4">
               <div className="flex gap-2">

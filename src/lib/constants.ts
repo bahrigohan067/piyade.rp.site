@@ -14,7 +14,7 @@ export const ROLES = {
   STAFF: "1551241634094645288",          // Uyarı verebilir + Uyarı/Timeout/Ban görür
   TRIAL_STAFF: "1551241468985737376",    // Uyarı/Timeout/Ban görür FAKAT UYARI VEREMEZ!
   WHITELIST: "1533908873772273715",      // Normal oyuncu (Kendi sicilini, rollerini, sunucu durumunu görür)
-  ILLEGAL: "1539249508314259567",        // Çete menüsü ve başvurusu SADECE bu role açıktır
+  ILLEGAL: "1539249508314259567",        // İllegal rolü
   KAYITSIZ: "1542271426386591894",       // Kayıtsız rolü (Sadece kayıt panelini görür)
 };
 

@@ -46,6 +46,7 @@ export default function YetkiliPaneliPage() {
   // Status feedback
   const [submitting, setSubmitting] = useState(false);
   const [successAlert, setSuccessAlert] = useState<string | null>(null);
+  const [errorAlert, setErrorAlert] = useState<string | null>(null);
 
   // Live Discord members
   const [membersList, setMembersList] = useState<MemberRecord[]>([]);
@@ -117,15 +118,21 @@ export default function YetkiliPaneliPage() {
   const handleSubmitWarning = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedMember) {
-      alert('Lütfen önce işlem yapılacak üyeyi seçin!');
+      setErrorAlert('Lütfen önce işlem yapılacak üyeyi seçin!');
       return;
     }
 
     setSubmitting(true);
+    setErrorAlert(null);
     try {
       const res = await fetch('/api/uyari', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.sessionToken ? { 'x-session-token': session.sessionToken } : {}),
+          ...(session?.id ? { 'x-user-id': session.id } : {}),
+        },
+        credentials: 'include',
         body: JSON.stringify({
           type: warningMode,
           targetUserId: selectedMember.id,
@@ -143,13 +150,16 @@ export default function YetkiliPaneliPage() {
         setProofUrl('');
         loadRealMembers(); // Refresh real members
       } else {
-        alert(data.error || 'Hata oluştu.');
+        setErrorAlert(data.error || 'Hata oluştu.');
       }
     } catch {
-      setSuccessAlert('✅ İşlem başarıyla Discord botuna iletildi ve kanala embed atıldı!');
+      setErrorAlert('İşlem sırasında bağlantı hatası oluştu. Lütfen tekrar deneyin.');
     } finally {
       setSubmitting(false);
-      setTimeout(() => setSuccessAlert(null), 7000);
+      setTimeout(() => {
+        setSuccessAlert(null);
+        setErrorAlert(null);
+      }, 7000);
     }
   };
 
@@ -206,6 +216,13 @@ export default function YetkiliPaneliPage() {
         <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm flex items-center gap-3 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
           <span>{successAlert}</span>
+        </div>
+      )}
+
+      {errorAlert && (
+        <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex items-center gap-3 animate-in fade-in">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400" />
+          <span>{errorAlert}</span>
         </div>
       )}
 

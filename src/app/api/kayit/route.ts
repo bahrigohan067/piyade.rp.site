@@ -5,7 +5,7 @@ import { findRobloxUser } from '@/lib/roblox';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
-  const session = await getSession();
+  const session = await getSession(request);
   if (!session) {
     return NextResponse.json({ error: 'Başvuru yapabilmek için Discord ile giriş yapmalısınız.' }, { status: 401 });
   }

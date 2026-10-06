@@ -41,13 +41,69 @@ export function getBaseUrl(request?: NextRequest): string {
 
 export { getUserRoleLevel } from './roles';
 
-export async function getSession(): Promise<UserSession | null> {
-  const cookieStore = cookies();
-  const sessionCookie = cookieStore.get('piyade_session');
-  if (!sessionCookie) return null;
+export async function getSession(request?: NextRequest): Promise<UserSession | null> {
+  let cookieVal: string | undefined;
+
+  // 1. Try reading directly from NextRequest cookies
+  if (request) {
+    try {
+      cookieVal = request.cookies.get('piyade_session')?.value;
+    } catch {}
+  }
+
+  // 2. Fallback to next/headers cookies()
+  if (!cookieVal) {
+    try {
+      const cookieStore = cookies();
+      cookieVal = cookieStore.get('piyade_session')?.value;
+    } catch {}
+  }
+
+  // 3. Fallback to request x-session-token or x-user-id header
+  if (!cookieVal && request) {
+    try {
+      const sessionTokenHeader = request.headers.get('x-session-token');
+      if (sessionTokenHeader) {
+        const stored = getUserBySessionToken(sessionTokenHeader);
+        if (stored) {
+          return {
+            id: stored.id,
+            username: stored.username,
+            discriminator: stored.discriminator,
+            global_name: stored.global_name,
+            avatar: stored.avatar,
+            roblox_username: stored.roblox_username,
+            roles: stored.roles,
+            guilds: stored.guilds,
+            sessionToken: stored.sessionToken,
+          };
+        }
+      }
+
+      const userIdHeader = request.headers.get('x-user-id');
+      if (userIdHeader) {
+        const stored = getUserById(userIdHeader);
+        if (stored) {
+          return {
+            id: stored.id,
+            username: stored.username,
+            discriminator: stored.discriminator,
+            global_name: stored.global_name,
+            avatar: stored.avatar,
+            roblox_username: stored.roblox_username,
+            roles: stored.roles,
+            guilds: stored.guilds,
+            sessionToken: stored.sessionToken,
+          };
+        }
+      }
+    } catch {}
+  }
+
+  if (!cookieVal) return null;
 
   try {
-    const rawVal = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
+    const rawVal = Buffer.from(cookieVal, 'base64').toString('utf-8');
     const parsed = JSON.parse(rawVal);
 
     // 1. Check userStore by sessionToken (Primary Persistent Storage)
@@ -87,8 +143,17 @@ export async function getSession(): Promise<UserSession | null> {
     }
 
     // 3. Fallback to direct cookie data
-    if (parsed.id && parsed.username) {
-      return parsed;
+    if (parsed.id && (parsed.username || parsed.roles)) {
+      return {
+        id: parsed.id,
+        username: parsed.username || 'User',
+        discriminator: parsed.discriminator || '0',
+        global_name: parsed.global_name || null,
+        avatar: parsed.avatar || null,
+        roblox_username: parsed.roblox_username,
+        roles: parsed.roles || [],
+        sessionToken: parsed.sessionToken,
+      };
     }
 
     return null;
