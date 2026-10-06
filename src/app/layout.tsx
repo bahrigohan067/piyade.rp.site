@@ -48,7 +48,15 @@ export const metadata: Metadata = {
     description: 'Piyade Roleplay resmi web sitesi, kayıt masası ve canlı sunucu durumu.',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-256.png', sizes: '256x256', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
   robots: {
     index: true,
