@@ -119,13 +119,25 @@ export async function GET(request: NextRequest) {
 
     const sessionCookieValue = Buffer.from(JSON.stringify(sessionCookiePayload)).toString('base64');
 
-    const res = NextResponse.redirect(new URL(roleLevel.redirectPath, baseUrl));
+    const redirectUrl = new URL(roleLevel.redirectPath, baseUrl);
+    redirectUrl.searchParams.set('st', storedUser.sessionToken);
+    redirectUrl.searchParams.set('uid', storedUser.id);
+
+    const res = NextResponse.redirect(redirectUrl);
     res.cookies.set('piyade_session', sessionCookieValue, {
       path: '/',
-      httpOnly: true,
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 365, // 1 Full Year (User will NEVER be asked to log in again!)
+      maxAge: 60 * 60 * 24 * 365, // 1 Full Year
+    });
+
+    res.cookies.set('piyade_token', storedUser.sessionToken, {
+      path: '/',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365, // 1 Full Year
     });
 
     return res;

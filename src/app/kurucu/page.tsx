@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ROLES, RULES, SAFEZONES, STAFF_ROLE_TITLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
+import { getCachedSession, syncSession, getAuthHeaders } from '@/lib/clientAuth';
 
 interface MemberRecord {
   id: string;
@@ -72,9 +73,10 @@ export default function KurucuPaneliPage() {
   const loadAllData = async () => {
     setRefreshing(true);
     try {
+      const headers = { 'Content-Type': 'application/json', ...getAuthHeaders() };
       const [membersRes, radarRes] = await Promise.all([
-        fetch('/api/members').then((r) => (r.ok ? r.json() : null)),
-        fetch('/api/radar').then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/members', { headers, credentials: 'include' }).then((r) => (r.ok ? r.json() : null)),
+        fetch('/api/radar', { headers, credentials: 'include' }).then((r) => (r.ok ? r.json() : null)),
       ]);
 
       if (membersRes && membersRes.members) {
@@ -103,11 +105,18 @@ export default function KurucuPaneliPage() {
   };
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.session) {
-          const roles: string[] = data.session.roles || [];
+    // 1. Instant optimistic load from cache
+    const cached = getCachedSession();
+    if (cached) {
+      setSession(cached);
+      setLoading(false);
+    }
+
+    // 2. Sync session with server & discord
+    syncSession()
+      .then((sess) => {
+        if (sess) {
+          const roles: string[] = sess.roles || [];
           const isKurucuRole = roles.includes(ROLES.KURUCU);
 
           if (!isKurucuRole) {
@@ -124,14 +133,16 @@ export default function KurucuPaneliPage() {
             }
             return;
           }
-          setSession(data.session);
+          setSession(sess);
           setLoading(false);
-        } else {
+        } else if (!cached) {
           window.location.href = '/api/auth/discord';
         }
       })
       .catch(() => {
-        window.location.href = '/api/auth/discord';
+        if (!cached) {
+          window.location.href = '/api/auth/discord';
+        }
       });
 
     loadAllData();

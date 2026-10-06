@@ -345,6 +345,14 @@ export default function DashboardSidebar({ session, currentPath, onCloseMobile }
 
         <Link
           href="/api/auth/logout"
+          onClick={() => {
+            try {
+              localStorage.removeItem('piyade_session');
+              localStorage.removeItem('piyade_token');
+              localStorage.removeItem('piyade_user_id');
+            } catch {}
+            if (onCloseMobile) onCloseMobile();
+          }}
           className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
         >
           <LogOut className="w-4 h-4 text-red-400" />

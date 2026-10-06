@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ROLES, REGISTRATION } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
+import { getCachedSession, syncSession } from '@/lib/clientAuth';
 
 interface RobloxUser {
   username: string;
@@ -36,18 +37,18 @@ export default function KayitPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.session) {
-          setSession(data.session);
-        } else {
-          setSession(null);
-        }
+    const cached = getCachedSession();
+    if (cached) {
+      setSession(cached);
+      setLoading(false);
+    }
+
+    syncSession()
+      .then((sess) => {
+        setSession(sess);
         setLoading(false);
       })
       .catch(() => {
-        setSession(null);
         setLoading(false);
       });
   }, []);

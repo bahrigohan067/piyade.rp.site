@@ -113,9 +113,27 @@ export function getUserById(id: string): StoredUser | null {
 
 export function getUserBySessionToken(token: string): StoredUser | null {
   const db = loadDatabase();
+  
+  // 1. Direct lookup by token map
   const userId = db.tokens[token];
-  if (!userId) return null;
-  return db.users[userId] || null;
+  if (userId && db.users[userId]) {
+    return db.users[userId];
+  }
+
+  // 2. Direct lookup if token is userId
+  if (db.users[token]) {
+    return db.users[token];
+  }
+
+  // 3. Scan users by sessionToken
+  const found = Object.values(db.users).find((u) => u.sessionToken === token);
+  if (found) {
+    db.tokens[token] = found.id;
+    saveDatabase(db);
+    return found;
+  }
+
+  return null;
 }
 
 export function getAllStoredUsers(): StoredUser[] {

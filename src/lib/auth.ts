@@ -42,25 +42,8 @@ export function getBaseUrl(request?: NextRequest): string {
 export { getUserRoleLevel } from './roles';
 
 export async function getSession(request?: NextRequest): Promise<UserSession | null> {
-  let cookieVal: string | undefined;
-
-  // 1. Try reading directly from NextRequest cookies
+  // 1. Check request headers (x-session-token / x-user-id) first
   if (request) {
-    try {
-      cookieVal = request.cookies.get('piyade_session')?.value;
-    } catch {}
-  }
-
-  // 2. Fallback to next/headers cookies()
-  if (!cookieVal) {
-    try {
-      const cookieStore = cookies();
-      cookieVal = cookieStore.get('piyade_session')?.value;
-    } catch {}
-  }
-
-  // 3. Fallback to request x-session-token or x-user-id header
-  if (!cookieVal && request) {
     try {
       const sessionTokenHeader = request.headers.get('x-session-token');
       if (sessionTokenHeader) {
@@ -97,16 +80,73 @@ export async function getSession(request?: NextRequest): Promise<UserSession | n
           };
         }
       }
+
+      // Check query parameters (?st= / ?uid=)
+      const qToken = request.nextUrl?.searchParams?.get('st');
+      if (qToken) {
+        const stored = getUserBySessionToken(qToken);
+        if (stored) return stored;
+      }
+
+      const qUid = request.nextUrl?.searchParams?.get('uid');
+      if (qUid) {
+        const stored = getUserById(qUid);
+        if (stored) return stored;
+      }
     } catch {}
+  }
+
+  // 2. Retrieve cookies (piyade_session or piyade_token)
+  let cookieVal: string | undefined;
+  let tokenCookieVal: string | undefined;
+
+  if (request) {
+    try {
+      cookieVal = request.cookies.get('piyade_session')?.value;
+      tokenCookieVal = request.cookies.get('piyade_token')?.value;
+    } catch {}
+  }
+
+  if (!cookieVal) {
+    try {
+      const cookieStore = cookies();
+      cookieVal = cookieStore.get('piyade_session')?.value;
+      if (!tokenCookieVal) {
+        tokenCookieVal = cookieStore.get('piyade_token')?.value;
+      }
+    } catch {}
+  }
+
+  // If token cookie is set, look up user directly
+  if (tokenCookieVal) {
+    const stored = getUserBySessionToken(tokenCookieVal);
+    if (stored) return stored;
   }
 
   if (!cookieVal) return null;
 
-  try {
-    const rawVal = Buffer.from(cookieVal, 'base64').toString('utf-8');
-    const parsed = JSON.parse(rawVal);
+  // Direct token check if cookie is just the raw token string
+  if (cookieVal.startsWith('st_')) {
+    const stored = getUserBySessionToken(cookieVal);
+    if (stored) return stored;
+  }
 
-    // 1. Check userStore by sessionToken (Primary Persistent Storage)
+  // Direct user ID check
+  if (/^\d{15,22}$/.test(cookieVal)) {
+    const stored = getUserById(cookieVal);
+    if (stored) return stored;
+  }
+
+  // 3. Parse Base64 session payload safely with decodeURIComponent
+  try {
+    let rawStr = cookieVal;
+    try {
+      rawStr = decodeURIComponent(cookieVal);
+    } catch {}
+
+    const decodedBuf = Buffer.from(rawStr, 'base64').toString('utf-8');
+    const parsed = JSON.parse(decodedBuf);
+
     if (parsed.sessionToken) {
       const stored = getUserBySessionToken(parsed.sessionToken);
       if (stored) {
@@ -124,7 +164,6 @@ export async function getSession(request?: NextRequest): Promise<UserSession | n
       }
     }
 
-    // 2. Check userStore by userId
     if (parsed.id) {
       const stored = getUserById(parsed.id);
       if (stored) {
@@ -142,7 +181,6 @@ export async function getSession(request?: NextRequest): Promise<UserSession | n
       }
     }
 
-    // 3. Fallback to direct cookie data
     if (parsed.id && (parsed.username || parsed.roles)) {
       return {
         id: parsed.id,

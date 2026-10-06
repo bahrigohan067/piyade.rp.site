@@ -6,6 +6,8 @@ import { Shield, AlertTriangle, Users, LogOut, ExternalLink } from 'lucide-react
 import { ROLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
 
+import { getCachedSession, syncSession, getAuthHeaders } from '@/lib/clientAuth';
+
 export default function OyuncuPaneliPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,12 +22,18 @@ export default function OyuncuPaneliPage() {
   const [myWarnings, setMyWarnings] = useState<any[]>([]);
 
   useEffect(() => {
-    // 1. Fetch current user session
-    fetch('/api/auth/me')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.session) {
-          const userRoles: string[] = data.session.roles || [];
+    // 1. Instant optimistic load from cache if available
+    const cached = getCachedSession();
+    if (cached) {
+      setSession(cached);
+      setLoading(false);
+    }
+
+    // 2. Sync session with server & discord
+    syncSession()
+      .then((sess) => {
+        if (sess) {
+          const userRoles: string[] = sess.roles || [];
           const isStaff = userRoles.some((r) => [
             ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
             ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
@@ -39,25 +47,27 @@ export default function OyuncuPaneliPage() {
             return;
           }
 
-          setSession(data.session);
+          setSession(sess);
+          setLoading(false);
 
           // Fetch warnings for this specific user
-          fetch('/api/uyarilar')
+          fetch('/api/uyarilar', { headers: getAuthHeaders(), credentials: 'include' })
             .then((r) => r.json())
             .then((wData) => {
               if (wData && wData.warnings) {
-                const filtered = wData.warnings.filter((w: any) => w.targetId === data.session.id);
+                const filtered = wData.warnings.filter((w: any) => w.targetId === sess.id);
                 setMyWarnings(filtered);
               }
             })
             .catch(() => {});
-          setLoading(false);
-        } else {
+        } else if (!cached) {
           window.location.href = '/api/auth/discord';
         }
       })
       .catch(() => {
-        window.location.href = '/api/auth/discord';
+        if (!cached) {
+          window.location.href = '/api/auth/discord';
+        }
       });
 
     // 2. Fetch live RP and ER:LC status

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { RULES, ROLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
+import { getCachedSession, syncSession } from '@/lib/clientAuth';
 
 interface MemberRecord {
   id: string;
@@ -67,11 +68,18 @@ export default function YetkiliPaneliPage() {
   };
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data && data.session) {
-          const roles: string[] = data.session.roles || [];
+    // 1. Instant optimistic load from cache
+    const cached = getCachedSession();
+    if (cached) {
+      setSession(cached);
+      setLoading(false);
+    }
+
+    // 2. Sync session with server & discord
+    syncSession()
+      .then((sess) => {
+        if (sess) {
+          const roles: string[] = sess.roles || [];
           const isStaff = roles.some((r) => [
             ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
             ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
@@ -85,14 +93,16 @@ export default function YetkiliPaneliPage() {
             }
             return;
           }
-          setSession(data.session);
+          setSession(sess);
           setLoading(false);
-        } else {
+        } else if (!cached) {
           window.location.href = '/api/auth/discord';
         }
       })
       .catch(() => {
-        window.location.href = '/api/auth/discord';
+        if (!cached) {
+          window.location.href = '/api/auth/discord';
+        }
       });
 
     loadRealMembers();
