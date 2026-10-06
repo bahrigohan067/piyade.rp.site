@@ -1,6 +1,8 @@
+import fs from 'fs';
+import path from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { CHANNELS, GUILD_ID, PUNISHMENT_ROLES, RULES, STAFF_ROLE_TITLES, YETKILI_MADDELER } from '@/lib/constants';
-import { getSession, getUserRoleLevel } from '@/lib/auth';
+import { getBaseUrl, getSession, getUserRoleLevel } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 function generateUyariId(): string {
@@ -19,6 +21,89 @@ function calculateTier(points: number): number {
   if (points >= 6) return 2;
   if (points >= 3) return 1;
   return 0;
+}
+
+/**
+ * Sends Discord embed with uyari_logo.png thumbnail (matches Discord bot _uyari_log_gonder 1:1)
+ */
+async function sendDiscordEmbedWithLogo(
+  channelId: string,
+  botToken: string,
+  content: string | undefined,
+  embed: any,
+  baseUrl: string
+) {
+  const logoPath = path.join(process.cwd(), 'public', 'uyari_logo.png');
+  let logoBuffer: Buffer | null = null;
+  try {
+    if (fs.existsSync(logoPath)) {
+      logoBuffer = fs.readFileSync(logoPath);
+    }
+  } catch (e) {
+    console.error('Error reading uyari_logo.png:', e);
+  }
+
+  // 1. Primary: Attach uyari_logo.png via multipart/form-data with attachment://uyari_logo.png thumbnail
+  if (logoBuffer) {
+    try {
+      const formData = new FormData();
+      const blob = new Blob([new Uint8Array(logoBuffer)], { type: 'image/png' });
+      formData.append('files[0]', blob, 'uyari_logo.png');
+
+      const payload = {
+        content: content || '',
+        embeds: [
+          {
+            ...embed,
+            thumbnail: { url: 'attachment://uyari_logo.png' },
+          },
+        ],
+        attachments: [
+          {
+            id: 0,
+            filename: 'uyari_logo.png',
+          },
+        ],
+      };
+
+      formData.append('payload_json', JSON.stringify(payload));
+
+      const res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+        body: formData,
+      });
+
+      if (res.ok) {
+        return res;
+      }
+      console.warn('Multipart Discord upload failed, attempting fallback JSON:', await res.text());
+    } catch (err) {
+      console.error('Error sending multipart message to Discord:', err);
+    }
+  }
+
+  // 2. Fallback: JSON with public URL thumbnail
+  const fallbackPayload = {
+    content: content || '',
+    embeds: [
+      {
+        ...embed,
+        thumbnail: { url: `${baseUrl}/uyari_logo.png` },
+      },
+    ],
+  };
+
+  return await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bot ${botToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(fallbackPayload),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -65,60 +150,41 @@ export async function POST(request: NextRequest) {
     const expiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const expiryDateStr = expiryDate.toLocaleDateString('tr-TR');
 
+    const baseUrl = getBaseUrl(request);
+
     // ──────────────────────────────────────────────
     // 1. SÖZLÜ UYARI İŞLEMİ (Botun Sözlü Uyarı Formatı)
     // ──────────────────────────────────────────────
     if (type === 'sozlu') {
       const sozluReason = reason || 'Sözlü uyarı kurallarına riayet edilmesi istendi.';
 
-      // Discord #uyarılar kanalına bildirim
-      await fetch(`https://discord.com/api/v10/channels/${CHANNELS.UYARILAR}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: `<@${targetUserId}>`,
-          embeds: [
-            {
-              title: '⚠️ Sözlü Uyarı!',
-              color: 0xf39c12, // Turuncu
-              fields: [
-                { name: 'Uyarı Alan', value: `<@${targetUserId}>`, inline: true },
-                { name: 'İşlem Yapan', value: `<@${session.id}>`, inline: true },
-                { name: 'İhlal / Sebep', value: sozluReason, inline: false },
-              ],
-              footer: { text: '© 2026 PRP' },
-              timestamp: now.toISOString(),
-            },
-          ],
-        }),
-      });
+      // Discord #uyarılar kanalına bildirim (uyari_logo.png ile)
+      const sozluEmbed = {
+        title: '⚠️ Sözlü Uyarı!',
+        color: 0xf39c12, // Turuncu
+        fields: [
+          { name: 'Uyarı Alan', value: `<@${targetUserId}>`, inline: true },
+          { name: 'İşlem Yapan', value: `<@${session.id}>`, inline: true },
+          { name: 'İhlal / Sebep', value: sozluReason, inline: false },
+        ],
+        footer: { text: '© 2026 PRP' },
+        timestamp: now.toISOString(),
+      };
+      await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, sozluEmbed, baseUrl);
 
       // Discord #sicil-log kanalına bildirim
-      await fetch(`https://discord.com/api/v10/channels/${CHANNELS.SICIL_LOG}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          embeds: [
-            {
-              title: '📜 Sicil Kaydı — Sözlü Uyarı',
-              color: 0xf39c12,
-              fields: [
-                { name: 'Kişi', value: `<@${targetUserId}>`, inline: true },
-                { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
-                { name: 'Sebep', value: sozluReason, inline: false },
-              ],
-              footer: { text: 'Piyade RP Web Paneli • © 2026 PRP' },
-              timestamp: now.toISOString(),
-            },
-          ],
-        }),
-      });
+      const sicilEmbed = {
+        title: '📜 Sicil Kaydı — Sözlü Uyarı',
+        color: 0xf39c12,
+        fields: [
+          { name: 'Kişi', value: `<@${targetUserId}>`, inline: true },
+          { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
+          { name: 'Sebep', value: sozluReason, inline: false },
+        ],
+        footer: { text: 'Piyade RP Web Paneli • © 2026 PRP' },
+        timestamp: now.toISOString(),
+      };
+      await sendDiscordEmbedWithLogo(CHANNELS.SICIL_LOG, botToken, undefined, sicilEmbed, baseUrl);
 
       return NextResponse.json({
         success: true,
@@ -295,56 +361,37 @@ export async function POST(request: NextRequest) {
       `Görsel Kanıtı: ${proofUrl ? `[Resim](${proofUrl})` : '*Eklenmedi*'}`
     );
 
-    // Discord #uyarılar kanalına master log mesajı gönder
-    await fetch(`https://discord.com/api/v10/channels/${CHANNELS.UYARILAR}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        content: `<@${targetUserId}>`,
-        embeds: [
-          {
-            title: '⚠️ Uyarı Var!!!',
-            color: 0xe74c3c, // Kırmızı
-            description: embedDesc,
-            fields: [
-              { name: '⚡ Uygulanan İşlem', value: `**${sonucMetni || 'Uyarı sicile kaydedildi.'}**`, inline: false },
-            ],
-            footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
-            timestamp: now.toISOString(),
-            image: proofUrl ? { url: proofUrl } : undefined,
-          },
-        ],
-      }),
-    });
+    // Discord #uyarılar kanalına master log mesajı gönder (uyari_logo.png thumbnail ile)
+    const masterEmbed = {
+      title: '⚠️ Uyarı Var!!!',
+      color: 0xe74c3c, // Kırmızı
+      description: embedDesc,
+      fields: [
+        { name: '⚡ Uygulanan İşlem', value: `**${sonucMetni || 'Uyarı sicile kaydedildi.'}**`, inline: false },
+      ],
+      footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
+      timestamp: now.toISOString(),
+      image: proofUrl ? { url: proofUrl } : undefined,
+    };
 
-    // Discord #sicil-log kanalına kayıt gönder
-    await fetch(`https://discord.com/api/v10/channels/${CHANNELS.SICIL_LOG}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bot ${botToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        embeds: [
-          {
-            title: `📜 Sicil Kaydı — #${uyariId}`,
-            color: 0xe74c3c,
-            fields: [
-              { name: 'Ceza Alan Kişi', value: `<@${targetUserId}>`, inline: true },
-              { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
-              { name: 'Kural İhlali', value: `**${rule.id}** — ${rule.description}`, inline: false },
-              { name: 'İşlem', value: `**${sonucMetni || 'Kayıt Yapıldı'}**`, inline: true },
-              { name: 'Puan', value: `+${addedPoints} (Toplam: ${newPoints})`, inline: true },
-            ],
-            footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
-            timestamp: now.toISOString(),
-          },
-        ],
-      }),
-    });
+    await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, masterEmbed, baseUrl);
+
+    // Discord #sicil-log kanalına kayıt gönder (uyari_logo.png thumbnail ile)
+    const sicilEmbed = {
+      title: `📜 Sicil Kaydı — #${uyariId}`,
+      color: 0xe74c3c,
+      fields: [
+        { name: 'Ceza Alan Kişi', value: `<@${targetUserId}>`, inline: true },
+        { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
+        { name: 'Kural İhlali', value: `**${rule.id}** — ${rule.description}`, inline: false },
+        { name: 'İşlem', value: `**${sonucMetni || 'Kayıt Yapıldı'}**`, inline: true },
+        { name: 'Puan', value: `+${addedPoints} (Toplam: ${newPoints})`, inline: true },
+      ],
+      footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
+      timestamp: now.toISOString(),
+    };
+
+    await sendDiscordEmbedWithLogo(CHANNELS.SICIL_LOG, botToken, undefined, sicilEmbed, baseUrl);
 
     return NextResponse.json({
       success: true,
