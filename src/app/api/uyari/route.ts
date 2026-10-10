@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CHANNELS, GUILD_ID, PUNISHMENT_ROLES, RULES, STAFF_ROLE_TITLES, YETKILI_MADDELER } from '@/lib/constants';
 import { getBaseUrl, getSession, getUserRoleLevel } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { getUserUyariData, addWarning, addSicilRecord, hesaplaKademe } from '@/lib/uyariStore';
 
 function generateUyariId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -12,15 +13,6 @@ function generateUyariId(): string {
     id += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return id;
-}
-
-function calculateTier(points: number): number {
-  if (points >= 15) return 5;
-  if (points >= 12) return 4;
-  if (points >= 9) return 3;
-  if (points >= 6) return 2;
-  if (points >= 3) return 1;
-  return 0;
 }
 
 /**
@@ -32,7 +24,7 @@ async function sendDiscordEmbedWithLogo(
   content: string | undefined,
   embed: any,
   baseUrl: string
-) {
+): Promise<{ ok: boolean; messageId?: string }> {
   const logoPath = path.join(process.cwd(), 'public', 'uyari_logo.png');
   let logoBuffer: Buffer | null = null;
   try {
@@ -77,7 +69,8 @@ async function sendDiscordEmbedWithLogo(
       });
 
       if (res.ok) {
-        return res;
+        const data = await res.json().catch(() => null);
+        return { ok: true, messageId: data?.id };
       }
       console.warn('Multipart Discord upload failed, attempting fallback JSON:', await res.text());
     } catch (err) {
@@ -96,14 +89,25 @@ async function sendDiscordEmbedWithLogo(
     ],
   };
 
-  return await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(fallbackPayload),
-  });
+  try {
+    const fallbackRes = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(fallbackPayload),
+    });
+
+    if (fallbackRes.ok) {
+      const data = await fallbackRes.json().catch(() => null);
+      return { ok: true, messageId: data?.id };
+    }
+  } catch (err) {
+    console.error('Error sending fallback message to Discord:', err);
+  }
+
+  return { ok: false };
 }
 
 export async function POST(request: NextRequest) {
@@ -186,6 +190,17 @@ export async function POST(request: NextRequest) {
       };
       await sendDiscordEmbedWithLogo(CHANNELS.SICIL_LOG, botToken, undefined, sicilEmbed, baseUrl);
 
+      // Sicile sözlü uyarıyı kaydet
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const sqlTarih = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      addSicilRecord(targetUserId, {
+        tarih: sqlTarih,
+        madde: 'SÖZLÜ',
+        aciklama: sozluReason,
+        yetkili_id: session.id,
+        sonuc: 'Sözlü Uyarı Verildi',
+      });
+
       return NextResponse.json({
         success: true,
         message: `✅ #${uyariId} Sözlü Uyarı <@${targetUserId}> kişisine verildi ve Discord kanalına iletildi!`,
@@ -217,18 +232,21 @@ export async function POST(request: NextRequest) {
     const memberData = await memberRes.json();
     const existingRoles: string[] = memberData.roles || [];
 
-    // Mevcut ceza puanı ve kademe tespiti
-    let oldTier = 0;
-    if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_5)) oldTier = 5;
-    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_4)) oldTier = 4;
-    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_3)) oldTier = 3;
-    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_2)) oldTier = 2;
-    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_1)) oldTier = 1;
+    // Mevcut ceza puanı ve kademe tespiti (uyariStore + rol senkronizasyonu)
+    const userUyariData = getUserUyariData(targetUserId);
+    const dbPoints = userUyariData.toplam_puan || 0;
 
-    const oldPoints = oldTier * 3;
+    let roleTier = 0;
+    if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_5)) roleTier = 5;
+    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_4)) roleTier = 4;
+    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_3)) roleTier = 3;
+    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_2)) roleTier = 2;
+    else if (existingRoles.includes(PUNISHMENT_ROLES.UYARI_1)) roleTier = 1;
+
+    const oldPoints = Math.max(dbPoints, roleTier * 3);
     const addedPoints = rule.points || 0;
     const newPoints = oldPoints + addedPoints;
-    const newTier = calculateTier(newPoints);
+    const newTier = hesaplaKademe(newPoints);
 
     let sonucMetni = '';
 
@@ -374,7 +392,7 @@ export async function POST(request: NextRequest) {
       image: proofUrl ? { url: proofUrl } : undefined,
     };
 
-    await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, masterEmbed, baseUrl);
+    const logRes = await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, masterEmbed, baseUrl);
 
     // Discord #sicil-log kanalına kayıt gönder (uyari_logo.png thumbnail ile)
     const sicilEmbed = {
@@ -392,6 +410,39 @@ export async function POST(request: NextRequest) {
     };
 
     await sendDiscordEmbedWithLogo(CHANNELS.SICIL_LOG, botToken, undefined, sicilEmbed, baseUrl);
+
+    // Bot ile tam senkron uyari_data.json ve sicil_data.json kayıtlarını yaz
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const tarihStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    const bitisStr = `${pad(expiryDate.getDate())}/${pad(expiryDate.getMonth() + 1)}/${expiryDate.getFullYear()}`;
+    const sqlTarihStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    addWarning(
+      targetUserId,
+      {
+        id: uyariId,
+        madde: rule.id,
+        puan: addedPoints,
+        aciklama: rule.description,
+        yetkili_id: session.id,
+        tarih: tarihStr,
+        bitis_tarihi: bitisStr,
+        kanit_url: proofUrl || null,
+        aktif: true,
+        log_msg_id: logRes.messageId || null,
+      },
+      newPoints,
+      newTier,
+      newTier >= 5 ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() : null
+    );
+
+    addSicilRecord(targetUserId, {
+      tarih: sqlTarihStr,
+      madde: rule.id,
+      aciklama: rule.description,
+      yetkili_id: session.id,
+      sonuc: sonucMetni || `Uyarı ${newTier} rolü verildi.`,
+    });
 
     return NextResponse.json({
       success: true,
