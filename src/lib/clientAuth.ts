@@ -8,30 +8,20 @@ export interface ClientSession {
   avatar: string | null;
   roblox_username?: string;
   roles: string[];
-  sessionToken?: string;
 }
 
 /**
- * Initializes client auth state by capturing ?st= and ?uid= tokens if redirected from Discord callback,
- * and saving them to localStorage.
+ * Initializes client auth state and cleans any obsolete query tokens from URLs.
  */
-export function initClientSession(): { token: string | null; userId: string | null } {
-  if (typeof window === 'undefined') return { token: null, userId: null };
+export function initClientSession(): void {
+  if (typeof window === 'undefined') return;
 
   try {
     const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('st');
-    const urlUid = urlParams.get('uid');
+    const hasSt = urlParams.has('st');
+    const hasUid = urlParams.has('uid');
 
-    if (urlToken) {
-      localStorage.setItem('piyade_token', urlToken);
-    }
-    if (urlUid) {
-      localStorage.setItem('piyade_user_id', urlUid);
-    }
-
-    // Clean sensitive tokens from URL without reloading
-    if (urlToken || urlUid) {
+    if (hasSt || hasUid) {
       urlParams.delete('st');
       urlParams.delete('uid');
       const newQuery = urlParams.toString() ? `?${urlParams.toString()}` : '';
@@ -39,22 +29,10 @@ export function initClientSession(): { token: string | null; userId: string | nu
       window.history.replaceState({}, document.title, newUrl);
     }
 
-    // Also check document.cookie for piyade_token
-    let token = localStorage.getItem('piyade_token');
-    let userId = localStorage.getItem('piyade_user_id');
-
-    if (!token && typeof document !== 'undefined') {
-      const match = document.cookie.match(/(?:^|;\s*)piyade_token=([^;]+)/);
-      if (match) {
-        token = match[1];
-        localStorage.setItem('piyade_token', token);
-      }
-    }
-
-    return { token, userId };
-  } catch {
-    return { token: null, userId: null };
-  }
+    // Clean obsolete keys from localStorage
+    localStorage.removeItem('piyade_token');
+    localStorage.removeItem('piyade_user_id');
+  } catch {}
 }
 
 /**
@@ -72,24 +50,15 @@ export function getCachedSession(): ClientSession | null {
 }
 
 /**
- * Returns auth headers to pass to all internal API fetch calls.
+ * Returns standard API request headers.
+ * Authentication is handled securely via HTTP-Only cookies.
  */
 export function getAuthHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const token = localStorage.getItem('piyade_token') || '';
-    const userId = localStorage.getItem('piyade_user_id') || '';
-    return {
-      ...(token ? { 'x-session-token': token } : {}),
-      ...(userId ? { 'x-user-id': userId } : {}),
-    };
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 /**
- * Fetches current session from /api/auth/me with credentials and fallback headers.
+ * Fetches current session from /api/auth/me with HTTP-Only credentials.
  * Updates localStorage on success.
  */
 export async function syncSession(): Promise<ClientSession | null> {
@@ -99,7 +68,6 @@ export async function syncSession(): Promise<ClientSession | null> {
     const res = await fetch('/api/auth/me', {
       headers: {
         'Content-Type': 'application/json',
-        ...getAuthHeaders(),
       },
       credentials: 'include',
     });
@@ -109,15 +77,15 @@ export async function syncSession(): Promise<ClientSession | null> {
       if (data && data.session) {
         try {
           localStorage.setItem('piyade_session', JSON.stringify(data.session));
-          if (data.session.sessionToken) {
-            localStorage.setItem('piyade_token', data.session.sessionToken);
-          }
-          if (data.session.id) {
-            localStorage.setItem('piyade_user_id', data.session.id);
-          }
         } catch {}
         return data.session;
       }
+    } else if (res.status === 401) {
+      // Session expired or invalid
+      try {
+        localStorage.removeItem('piyade_session');
+      } catch {}
+      return null;
     }
   } catch (err) {
     console.warn('Session sync warning:', err);

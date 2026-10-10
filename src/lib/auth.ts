@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { NextRequest } from 'next/server';
+import crypto from 'crypto';
 import { ROLES } from './constants';
-import { getUserById, getUserBySessionToken } from './userStore';
+import { getUserBySessionToken } from './userStore';
 
 export interface UserGuild {
   id: string;
@@ -41,69 +42,73 @@ export function getBaseUrl(request?: NextRequest): string {
 
 export { getUserRoleLevel } from './roles';
 
-export async function getSession(request?: NextRequest): Promise<UserSession | null> {
-  // 1. Check request headers (x-session-token / x-user-id) first
-  if (request) {
-    try {
-      const sessionTokenHeader = request.headers.get('x-session-token');
-      if (sessionTokenHeader) {
-        const stored = getUserBySessionToken(sessionTokenHeader);
-        if (stored) {
-          return {
-            id: stored.id,
-            username: stored.username,
-            discriminator: stored.discriminator,
-            global_name: stored.global_name,
-            avatar: stored.avatar,
-            roblox_username: stored.roblox_username,
-            roles: stored.roles,
-            guilds: stored.guilds,
-            sessionToken: stored.sessionToken,
-          };
-        }
-      }
+function getSessionSecret(): string {
+  return (
+    process.env.SESSION_SECRET ||
+    process.env.DISCORD_CLIENT_SECRET ||
+    process.env.DISCORD_BOT_TOKEN ||
+    'piyade_rp_fallback_internal_secure_key_2026'
+  );
+}
 
-      const userIdHeader = request.headers.get('x-user-id');
-      if (userIdHeader) {
-        const stored = getUserById(userIdHeader);
-        if (stored) {
-          return {
-            id: stored.id,
-            username: stored.username,
-            discriminator: stored.discriminator,
-            global_name: stored.global_name,
-            avatar: stored.avatar,
-            roblox_username: stored.roblox_username,
-            roles: stored.roles,
-            guilds: stored.guilds,
-            sessionToken: stored.sessionToken,
-          };
-        }
-      }
+/**
+ * Signs a session token with HMAC-SHA256 producing `<token>.<signature>`
+ */
+export function signSessionToken(sessionToken: string): string {
+  const secret = getSessionSecret();
+  const signature = crypto.createHmac('sha256', secret).update(sessionToken).digest('base64url');
+  return `${sessionToken}.${signature}`;
+}
 
-      // Check query parameters (?st= / ?uid=)
-      const qToken = request.nextUrl?.searchParams?.get('st');
-      if (qToken) {
-        const stored = getUserBySessionToken(qToken);
-        if (stored) return stored;
-      }
+/**
+ * Cryptographically verifies an HMAC-signed session cookie.
+ * Returns the verified sessionToken if authentic, or null if tampered/invalid.
+ */
+export function verifySessionCookie(cookieValue: string): string | null {
+  if (!cookieValue || typeof cookieValue !== 'string') return null;
 
-      const qUid = request.nextUrl?.searchParams?.get('uid');
-      if (qUid) {
-        const stored = getUserById(qUid);
-        if (stored) return stored;
-      }
-    } catch {}
+  let cleanValue = cookieValue;
+  try {
+    cleanValue = decodeURIComponent(cookieValue);
+  } catch {}
+
+  const parts = cleanValue.split('.');
+  if (parts.length !== 2) return null;
+
+  const [sessionToken, signature] = parts;
+  if (!sessionToken || !signature || sessionToken.length < 32) return null;
+
+  const secret = getSessionSecret();
+  const expectedSignature = crypto.createHmac('sha256', secret).update(sessionToken).digest('base64url');
+
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+
+  if (sigBuf.length !== expBuf.length) {
+    return null;
   }
 
-  // 2. Retrieve cookies (piyade_session or piyade_token)
+  try {
+    if (crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return sessionToken;
+    }
+  } catch {}
+
+  return null;
+}
+
+/**
+ * Retrieves the current user session securely.
+ * Authenticates EXCLUSIVELY via cryptographically verified, HTTP-Only session cookies.
+ * Does NOT trust client-supplied headers (x-user-id), query parameters (?uid=),
+ * or unsigned client-forged cookie payloads.
+ */
+export async function getSession(request?: NextRequest): Promise<UserSession | null> {
   let cookieVal: string | undefined;
-  let tokenCookieVal: string | undefined;
 
   if (request) {
     try {
       cookieVal = request.cookies.get('piyade_session')?.value;
-      tokenCookieVal = request.cookies.get('piyade_token')?.value;
     } catch {}
   }
 
@@ -111,91 +116,32 @@ export async function getSession(request?: NextRequest): Promise<UserSession | n
     try {
       const cookieStore = cookies();
       cookieVal = cookieStore.get('piyade_session')?.value;
-      if (!tokenCookieVal) {
-        tokenCookieVal = cookieStore.get('piyade_token')?.value;
-      }
     } catch {}
-  }
-
-  // If token cookie is set, look up user directly
-  if (tokenCookieVal) {
-    const stored = getUserBySessionToken(tokenCookieVal);
-    if (stored) return stored;
   }
 
   if (!cookieVal) return null;
 
-  // Direct token check if cookie is just the raw token string
-  if (cookieVal.startsWith('st_')) {
-    const stored = getUserBySessionToken(cookieVal);
-    if (stored) return stored;
-  }
-
-  // Direct user ID check
-  if (/^\d{15,22}$/.test(cookieVal)) {
-    const stored = getUserById(cookieVal);
-    if (stored) return stored;
-  }
-
-  // 3. Parse Base64 session payload safely with decodeURIComponent
-  try {
-    let rawStr = cookieVal;
-    try {
-      rawStr = decodeURIComponent(cookieVal);
-    } catch {}
-
-    const decodedBuf = Buffer.from(rawStr, 'base64').toString('utf-8');
-    const parsed = JSON.parse(decodedBuf);
-
-    if (parsed.sessionToken) {
-      const stored = getUserBySessionToken(parsed.sessionToken);
-      if (stored) {
-        return {
-          id: stored.id,
-          username: stored.username,
-          discriminator: stored.discriminator,
-          global_name: stored.global_name,
-          avatar: stored.avatar,
-          roblox_username: stored.roblox_username,
-          roles: stored.roles,
-          guilds: stored.guilds,
-          sessionToken: stored.sessionToken,
-        };
-      }
-    }
-
-    if (parsed.id) {
-      const stored = getUserById(parsed.id);
-      if (stored) {
-        return {
-          id: stored.id,
-          username: stored.username,
-          discriminator: stored.discriminator,
-          global_name: stored.global_name,
-          avatar: stored.avatar,
-          roblox_username: stored.roblox_username,
-          roles: stored.roles,
-          guilds: stored.guilds,
-          sessionToken: stored.sessionToken,
-        };
-      }
-    }
-
-    if (parsed.id && (parsed.username || parsed.roles)) {
-      return {
-        id: parsed.id,
-        username: parsed.username || 'User',
-        discriminator: parsed.discriminator || '0',
-        global_name: parsed.global_name || null,
-        avatar: parsed.avatar || null,
-        roblox_username: parsed.roblox_username,
-        roles: parsed.roles || [],
-        sessionToken: parsed.sessionToken,
-      };
-    }
-
-    return null;
-  } catch {
+  // 1. Cryptographic HMAC verification
+  const validToken = verifySessionCookie(cookieVal);
+  if (!validToken) {
     return null;
   }
+
+  // 2. Strict server-side user lookup
+  const stored = getUserBySessionToken(validToken);
+  if (!stored) {
+    return null;
+  }
+
+  // 3. Return strictly verified session
+  return {
+    id: stored.id,
+    username: stored.username,
+    discriminator: stored.discriminator,
+    global_name: stored.global_name,
+    avatar: stored.avatar,
+    roblox_username: stored.roblox_username,
+    roles: stored.roles,
+    guilds: stored.guilds,
+  };
 }

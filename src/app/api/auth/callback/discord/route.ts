@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GUILD_ID } from '@/lib/constants';
-import { getBaseUrl, getUserRoleLevel, UserSession } from '@/lib/auth';
+import { getBaseUrl, getUserRoleLevel, signSessionToken } from '@/lib/auth';
 import { saveOrUpdateUser } from '@/lib/userStore';
 
 export async function GET(request: NextRequest) {
@@ -106,38 +106,28 @@ export async function GET(request: NextRequest) {
       })),
     });
 
-    // 6. Set lean session cookie pointing to the stored user record (valid for 1 year!)
-    const sessionCookiePayload = {
-      id: storedUser.id,
-      sessionToken: storedUser.sessionToken,
-      username: storedUser.username,
-      discriminator: storedUser.discriminator,
-      avatar: storedUser.avatar,
-      roblox_username: storedUser.roblox_username,
-      roles: storedUser.roles,
-    };
+    // 6. Set cryptographically signed, HTTP-Only session cookie (valid for 1 year!)
+    const signedCookieValue = signSessionToken(storedUser.sessionToken);
 
-    const sessionCookieValue = Buffer.from(JSON.stringify(sessionCookiePayload)).toString('base64');
-
+    // Direct clean redirect without leaking tokens or IDs in URL
     const redirectUrl = new URL(roleLevel.redirectPath, baseUrl);
-    redirectUrl.searchParams.set('st', storedUser.sessionToken);
-    redirectUrl.searchParams.set('uid', storedUser.id);
 
     const res = NextResponse.redirect(redirectUrl);
-    res.cookies.set('piyade_session', sessionCookieValue, {
+    res.cookies.set('piyade_session', signedCookieValue, {
       path: '/',
-      httpOnly: false,
+      httpOnly: true, // STRICT HTTP-ONLY: XSS protection
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365, // 1 Full Year
     });
 
-    res.cookies.set('piyade_token', storedUser.sessionToken, {
+    // Clear any legacy client-accessible cookie
+    res.cookies.set('piyade_token', '', {
       path: '/',
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      maxAge: 0,
+      expires: new Date(0),
+      httpOnly: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 365, // 1 Full Year
     });
 
     return res;

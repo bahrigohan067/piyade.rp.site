@@ -139,8 +139,6 @@ export default function YetkiliPaneliPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.sessionToken ? { 'x-session-token': session.sessionToken } : {}),
-          ...(session?.id ? { 'x-user-id': session.id } : {}),
         },
         credentials: 'include',
         body: JSON.stringify({

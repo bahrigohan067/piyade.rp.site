@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 export interface StoredUser {
   id: string;
@@ -26,6 +27,8 @@ interface UserDatabase {
   tokens: Record<string, string>;                 // sessionToken -> Discord User ID
 }
 
+let memoryDb: UserDatabase | null = null;
+
 function getDataFilePath(): string {
   // Support Railway persistent volume mount path via DATA_DIR or fallback to local ./data
   const dataDir = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -40,23 +43,29 @@ function getDataFilePath(): string {
 }
 
 function loadDatabase(): UserDatabase {
+  if (memoryDb) {
+    return memoryDb;
+  }
   const filePath = getDataFilePath();
   try {
     if (fs.existsSync(filePath)) {
       const raw = fs.readFileSync(filePath, 'utf-8');
       const parsed = JSON.parse(raw);
-      return {
+      memoryDb = {
         users: parsed.users || {},
         tokens: parsed.tokens || {},
       };
+      return memoryDb;
     }
   } catch (err) {
     console.error('Error reading user database from', filePath, err);
   }
-  return { users: {}, tokens: {} };
+  memoryDb = { users: {}, tokens: {} };
+  return memoryDb;
 }
 
 function saveDatabase(db: UserDatabase): void {
+  memoryDb = db;
   const filePath = getDataFilePath();
   try {
     const jsonStr = JSON.stringify(db, null, 2);
@@ -67,7 +76,7 @@ function saveDatabase(db: UserDatabase): void {
 }
 
 /**
- * Save or update user and return the stored record with their persistent sessionToken.
+ * Save or update user and return the stored record with a cryptographically secure sessionToken.
  */
 export function saveOrUpdateUser(data: {
   id: string;
@@ -83,7 +92,8 @@ export function saveOrUpdateUser(data: {
   const now = new Date().toISOString();
   const existing = db.users[data.id];
 
-  const sessionToken = existing?.sessionToken || `st_${data.id}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+  // Cryptographically secure 256-bit token (64 hex characters)
+  const sessionToken = crypto.randomBytes(32).toString('hex');
 
   const storedUser: StoredUser = {
     id: data.id,
@@ -111,26 +121,19 @@ export function getUserById(id: string): StoredUser | null {
   return db.users[id] || null;
 }
 
+/**
+ * STRICT lookup: Retrieves a user ONLY by their verified server-issued sessionToken.
+ * Never matches by userId or unverified strings.
+ */
 export function getUserBySessionToken(token: string): StoredUser | null {
+  if (!token || typeof token !== 'string' || token.length < 32) {
+    return null;
+  }
   const db = loadDatabase();
   
-  // 1. Direct lookup by token map
   const userId = db.tokens[token];
   if (userId && db.users[userId]) {
     return db.users[userId];
-  }
-
-  // 2. Direct lookup if token is userId
-  if (db.users[token]) {
-    return db.users[token];
-  }
-
-  // 3. Scan users by sessionToken
-  const found = Object.values(db.users).find((u) => u.sessionToken === token);
-  if (found) {
-    db.tokens[token] = found.id;
-    saveDatabase(db);
-    return found;
   }
 
   return null;
@@ -153,6 +156,7 @@ export function updateUserRoles(id: string, roles: string[], robloxUsername?: st
 }
 
 export function removeSessionToken(token: string): void {
+  if (!token || typeof token !== 'string') return;
   const db = loadDatabase();
   if (db.tokens[token]) {
     delete db.tokens[token];

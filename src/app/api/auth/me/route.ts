@@ -36,15 +36,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const res = NextResponse.json({ session });
-  if (session.sessionToken) {
-    res.cookies.set('piyade_token', session.sessionToken, {
-      path: '/',
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 365,
-    });
-  }
-  return res;
+  return NextResponse.json({ session });
 }
