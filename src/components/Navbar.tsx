@@ -24,7 +24,12 @@ export default function Navbar({ onOpenRules }: NavbarProps) {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/auth/me')
+    try {
+      const cached = localStorage.getItem('piyade_session');
+      if (cached) setSession(JSON.parse(cached));
+    } catch {}
+
+    fetch('/api/auth/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.session) setSession(data.session);

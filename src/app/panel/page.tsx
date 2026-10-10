@@ -32,8 +32,9 @@ export default function OyuncuPaneliPage() {
     // 2. Sync session with server & discord
     syncSession()
       .then((sess) => {
-        if (sess) {
-          const userRoles: string[] = sess.roles || [];
+        const active = sess || cached;
+        if (active) {
+          const userRoles: string[] = active.roles || [];
           const isStaff = userRoles.some((r) => [
             ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
             ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
@@ -47,7 +48,7 @@ export default function OyuncuPaneliPage() {
             return;
           }
 
-          setSession(sess);
+          setSession(active);
           setLoading(false);
 
           // Fetch warnings for this specific user
@@ -55,12 +56,12 @@ export default function OyuncuPaneliPage() {
             .then((r) => r.json())
             .then((wData) => {
               if (wData && wData.warnings) {
-                const filtered = wData.warnings.filter((w: any) => w.targetId === sess.id);
+                const filtered = wData.warnings.filter((w: any) => w.targetId === active.id);
                 setMyWarnings(filtered);
               }
             })
             .catch(() => {});
-        } else if (!cached) {
+        } else {
           window.location.href = '/api/auth/discord';
         }
       })

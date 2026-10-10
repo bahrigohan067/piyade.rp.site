@@ -78,8 +78,9 @@ export default function YetkiliPaneliPage() {
     // 2. Sync session with server & discord
     syncSession()
       .then((sess) => {
-        if (sess) {
-          const roles: string[] = sess.roles || [];
+        const active = sess || cached;
+        if (active) {
+          const roles: string[] = active.roles || [];
           const isStaff = roles.some((r) => [
             ROLES.KURUCU, ROLES.UST_YONETIM, ROLES.YONETICI, 
             ROLES.SENIOR_STAFF, ROLES.STAFF, ROLES.TRIAL_STAFF
@@ -93,9 +94,9 @@ export default function YetkiliPaneliPage() {
             }
             return;
           }
-          setSession(sess);
+          setSession(active);
           setLoading(false);
-        } else if (!cached) {
+        } else {
           window.location.href = '/api/auth/discord';
         }
       })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GUILD_ID } from '@/lib/constants';
-import { getBaseUrl, getUserRoleLevel, signSessionToken } from '@/lib/auth';
+import { getBaseUrl, getUserRoleLevel, createSessionToken, isSecureRequest, UserSession } from '@/lib/auth';
 import { saveOrUpdateUser } from '@/lib/userStore';
 
 export async function GET(request: NextRequest) {
@@ -106,17 +106,29 @@ export async function GET(request: NextRequest) {
       })),
     });
 
-    // 6. Set cryptographically signed, HTTP-Only session cookie (valid for 1 year!)
-    const signedCookieValue = signSessionToken(storedUser.sessionToken);
+    // 6. Set cryptographically signed, HTTP-Only JWT session cookie (valid for 1 year!)
+    const userSession: UserSession = {
+      id: storedUser.id,
+      username: storedUser.username,
+      discriminator: storedUser.discriminator,
+      global_name: storedUser.global_name,
+      avatar: storedUser.avatar,
+      roblox_username: storedUser.roblox_username,
+      roles: storedUser.roles,
+      guilds: storedUser.guilds,
+    };
+
+    const sessionCookieValue = createSessionToken(userSession);
+    const isSecure = isSecureRequest(request, baseUrl);
 
     // Direct clean redirect without leaking tokens or IDs in URL
     const redirectUrl = new URL(roleLevel.redirectPath, baseUrl);
 
     const res = NextResponse.redirect(redirectUrl);
-    res.cookies.set('piyade_session', signedCookieValue, {
+    res.cookies.set('piyade_session', sessionCookieValue, {
       path: '/',
       httpOnly: true, // STRICT HTTP-ONLY: XSS protection
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 365, // 1 Full Year
     });

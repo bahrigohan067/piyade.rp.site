@@ -115,8 +115,9 @@ export default function KurucuPaneliPage() {
     // 2. Sync session with server & discord
     syncSession()
       .then((sess) => {
-        if (sess) {
-          const roles: string[] = sess.roles || [];
+        const active = sess || cached;
+        if (active) {
+          const roles: string[] = active.roles || [];
           const isKurucuRole = roles.includes(ROLES.KURUCU);
 
           if (!isKurucuRole) {
@@ -133,9 +134,9 @@ export default function KurucuPaneliPage() {
             }
             return;
           }
-          setSession(sess);
+          setSession(active);
           setLoading(false);
-        } else if (!cached) {
+        } else {
           window.location.href = '/api/auth/discord';
         }
       })

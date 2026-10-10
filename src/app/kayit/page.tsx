@@ -45,7 +45,8 @@ export default function KayitPage() {
 
     syncSession()
       .then((sess) => {
-        setSession(sess);
+        const active = sess || cached;
+        setSession(active);
         setLoading(false);
       })
       .catch(() => {
