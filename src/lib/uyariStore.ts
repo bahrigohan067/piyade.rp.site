@@ -60,19 +60,19 @@ function getSecondaryBotDataDir(): string | null {
   return null;
 }
 
-function getFilePath(filename: 'uyari_data.json' | 'sicil_data.json'): string {
+function getFilePath(filename: 'uyari_data.json' | 'sicil_data.json' | 'kayit_data.json'): string {
   return path.join(getPrimaryDataDir(), filename);
 }
 
 export function loadUyariDatabase(): UyariDatabase {
-  if (memoryUyariDb) return memoryUyariDb;
-
+  // Always check primary disk first to pick up real-time bot updates
   const primaryPath = getFilePath('uyari_data.json');
   try {
     if (fs.existsSync(primaryPath)) {
       const raw = fs.readFileSync(primaryPath, 'utf-8');
-      memoryUyariDb = JSON.parse(raw);
-      return memoryUyariDb!;
+      const data = JSON.parse(raw);
+      memoryUyariDb = data;
+      return data;
     }
   } catch (err) {
     console.error('Error reading primary uyari_data.json:', err);
@@ -85,14 +85,14 @@ export function loadUyariDatabase(): UyariDatabase {
     try {
       if (fs.existsSync(botPath)) {
         const raw = fs.readFileSync(botPath, 'utf-8');
-        memoryUyariDb = JSON.parse(raw);
-        return memoryUyariDb!;
+        const data = JSON.parse(raw);
+        memoryUyariDb = data;
+        return data;
       }
     } catch {}
   }
 
-  memoryUyariDb = {};
-  return memoryUyariDb;
+  return memoryUyariDb || {};
 }
 
 export function saveUyariDatabase(db: UyariDatabase): void {
@@ -120,14 +120,14 @@ export function saveUyariDatabase(db: UyariDatabase): void {
 }
 
 export function loadSicilDatabase(): SicilDatabase {
-  if (memorySicilDb) return memorySicilDb;
-
+  // Always check primary disk first
   const primaryPath = getFilePath('sicil_data.json');
   try {
     if (fs.existsSync(primaryPath)) {
       const raw = fs.readFileSync(primaryPath, 'utf-8');
-      memorySicilDb = JSON.parse(raw);
-      return memorySicilDb!;
+      const data = JSON.parse(raw);
+      memorySicilDb = data;
+      return data;
     }
   } catch (err) {
     console.error('Error reading primary sicil_data.json:', err);
@@ -139,14 +139,39 @@ export function loadSicilDatabase(): SicilDatabase {
     try {
       if (fs.existsSync(botPath)) {
         const raw = fs.readFileSync(botPath, 'utf-8');
-        memorySicilDb = JSON.parse(raw);
-        return memorySicilDb!;
+        const data = JSON.parse(raw);
+        memorySicilDb = data;
+        return data;
       }
     } catch {}
   }
 
-  memorySicilDb = {};
-  return memorySicilDb;
+  return memorySicilDb || {};
+}
+
+export function loadKayitDatabase(): Record<string, any> {
+  const primaryPath = getFilePath('kayit_data.json');
+  try {
+    if (fs.existsSync(primaryPath)) {
+      const raw = fs.readFileSync(primaryPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      return parsed.kullanicilar || parsed || {};
+    }
+  } catch {}
+
+  const botDir = getSecondaryBotDataDir();
+  if (botDir) {
+    const botPath = path.join(botDir, 'kayit_data.json');
+    try {
+      if (fs.existsSync(botPath)) {
+        const raw = fs.readFileSync(botPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        return parsed.kullanicilar || parsed || {};
+      }
+    } catch {}
+  }
+
+  return {};
 }
 
 export function saveSicilDatabase(db: SicilDatabase): void {

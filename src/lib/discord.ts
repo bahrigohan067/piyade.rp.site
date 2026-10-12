@@ -1,4 +1,5 @@
 import { CHANNELS, GUILD_ID, PUNISHMENT_ROLES, ROLES, RULES, STAFF_ROLE_TITLES } from './constants';
+import { loadUyariDatabase, loadKayitDatabase } from './uyariStore';
 
 export interface DiscordMemberInfo {
   id: string;
@@ -11,6 +12,9 @@ export interface DiscordMemberInfo {
   robloxName: string;
   roles: string[];
   staffTitle: string | null;
+  isWhitelist: boolean;
+  isKayitsiz: boolean;
+  registrationStatus: string | null;
   warningCount: number;
   totalPoints: number;
   warningTier: number;
@@ -207,7 +211,7 @@ export async function fetchGuildMembers(): Promise<DiscordMemberInfo[]> {
     const rawBans = bansRes.ok ? await bansRes.json() : [];
     const bannedIds = new Set(rawBans.map((b: any) => b.user?.id));
 
-    // Üye başına uyarı geçmişi haritası
+    // Üye başına uyarı geçmişi haritası (Kanal mesajları)
     const warningMap: Record<string, { count: number; points: number }> = {};
     for (const w of warnings) {
       if (!w.targetId) continue;
@@ -216,6 +220,29 @@ export async function fetchGuildMembers(): Promise<DiscordMemberInfo[]> {
       }
       warningMap[w.targetId].count += 1;
       warningMap[w.targetId].points += w.points || 0;
+    }
+
+    // Bot uyarı veritabanını (uyari_data.json) canlı diskten haritaya ekle
+    try {
+      const uyariDb = loadUyariDatabase();
+      for (const [targetId, uData] of Object.entries(uyariDb)) {
+        if (!warningMap[targetId]) {
+          warningMap[targetId] = { count: 0, points: 0 };
+        }
+        const activeList = (uData.uyarilar || []).filter((u) => u.aktif !== false);
+        warningMap[targetId].count = Math.max(warningMap[targetId].count, activeList.length);
+        warningMap[targetId].points = Math.max(warningMap[targetId].points, uData.toplam_puan || 0);
+      }
+    } catch (e) {
+      console.warn('Uyari veritabanı senkronizasyon uyarısı:', e);
+    }
+
+    // Bot kayıt veritabanını (kayit_data.json) canlı diskten oku
+    let kayitDb: Record<string, any> = {};
+    try {
+      kayitDb = loadKayitDatabase();
+    } catch (e) {
+      console.warn('Kayıt veritabanı okuma uyarısı:', e);
     }
 
     return rawMembers.map((m: any) => {
@@ -228,6 +255,15 @@ export async function fetchGuildMembers(): Promise<DiscordMemberInfo[]> {
         const parts = nick.split('|');
         name = parts[0].trim();
         robloxName = parts[1].trim();
+      }
+
+      // Bot kayıt dosyasından varsa gerçek roblox ve karakter adını çek
+      const userKayit = kayitDb[user.id];
+      let registrationStatus: string | null = null;
+      if (userKayit) {
+        if (userKayit.roblox_ad) robloxName = userKayit.roblox_ad;
+        if (userKayit.karakter?.ad) name = userKayit.karakter.ad;
+        registrationStatus = userKayit.asama || null;
       }
 
       const roles: string[] = m.roles || [];
@@ -281,6 +317,9 @@ export async function fetchGuildMembers(): Promise<DiscordMemberInfo[]> {
         }
       }
 
+      const isWhitelist = roles.includes(ROLES.WHITELIST);
+      const isKayitsiz = roles.includes(ROLES.KAYITSIZ) || (!isWhitelist && !staffTitle);
+
       // Timeout (communication_disabled_until) hesaplama
       let timeoutRemaining: string | null = null;
       if (m.communication_disabled_until) {
@@ -316,6 +355,9 @@ export async function fetchGuildMembers(): Promise<DiscordMemberInfo[]> {
         robloxName,
         roles,
         staffTitle,
+        isWhitelist,
+        isKayitsiz,
+        registrationStatus,
         warningCount,
         totalPoints: finalPoints,
         warningTier,

@@ -21,6 +21,9 @@ interface MemberRecord {
   robloxName: string;
   roles: string[];
   staffTitle: string | null;
+  isWhitelist?: boolean;
+  isKayitsiz?: boolean;
+  registrationStatus?: string | null;
   warningCount: number;
   totalPoints: number;
   warningTier: number;
@@ -364,7 +367,26 @@ export default function KurucuPaneliPage() {
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-white text-xs truncate">{user.nickname}</h4>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <h4 className="font-bold text-white text-xs truncate">{user.nickname}</h4>
+                              {user.staffTitle ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 flex-shrink-0">
+                                  Yetkili
+                                </span>
+                              ) : user.roles?.includes(ROLES.WHITELIST) ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0">
+                                  Whitelist
+                                </span>
+                              ) : user.roles?.includes(ROLES.KAYITSIZ) ? (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 flex-shrink-0">
+                                  Kayıtsız
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 flex-shrink-0">
+                                  Onaysız
+                                </span>
+                              )}
+                            </div>
                             {user.isBanned ? (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
                                 YASAKLI
@@ -405,9 +427,21 @@ export default function KurucuPaneliPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-lg font-bold text-white">{selectedMember.nickname}</h3>
-                            {selectedMember.staffTitle && (
-                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                {selectedMember.staffTitle}
+                            {selectedMember.staffTitle ? (
+                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                👑 {selectedMember.staffTitle}
+                              </span>
+                            ) : selectedMember.roles?.includes(ROLES.WHITELIST) ? (
+                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                ✅ Whitelist
+                              </span>
+                            ) : selectedMember.roles?.includes(ROLES.KAYITSIZ) ? (
+                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                📝 Kayıtsız Üye
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                                ⚠️ Kayıtsız / Onaysız
                               </span>
                             )}
                           </div>
@@ -493,9 +527,45 @@ export default function KurucuPaneliPage() {
                             </div>
                             <span className="text-[10px] text-gray-400">ID: 1529545898294509589</span>
                           </div>
-                          <span className="text-xs text-purple-300 font-semibold">
-                            {selectedMember.staffTitle || 'Whitelist Üye'}
-                          </span>
+                          {(() => {
+                            const roles = selectedMember.roles || [];
+                            const isWhitelist = roles.includes(ROLES.WHITELIST);
+                            const isKayitsiz = roles.includes(ROLES.KAYITSIZ);
+
+                            if (selectedMember.staffTitle) {
+                              return (
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                  👑 {selectedMember.staffTitle}
+                                </span>
+                              );
+                            }
+                            if (isWhitelist) {
+                              return (
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                  ✅ Whitelist Oyuncu (Kayıtlı)
+                                </span>
+                              );
+                            }
+                            if (selectedMember.registrationStatus) {
+                              return (
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                  ⏳ Kayıt Aşamasında ({selectedMember.registrationStatus})
+                                </span>
+                              );
+                            }
+                            if (isKayitsiz) {
+                              return (
+                                <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                  📝 Kayıtsız Üye (Kayıt Olmadı)
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-500/20 text-gray-300 border border-gray-500/30">
+                                ⚠️ Kayıtsız / Doğrulanmamış
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {selectedMember.id === session?.id && (

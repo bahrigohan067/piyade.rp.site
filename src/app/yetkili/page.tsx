@@ -19,6 +19,10 @@ interface MemberRecord {
   nickname: string;
   robloxName: string;
   roles: string[];
+  staffTitle?: string | null;
+  isWhitelist?: boolean;
+  isKayitsiz?: boolean;
+  registrationStatus?: string | null;
   warningCount: number;
   totalPoints: number;
   warningTier: number;
@@ -278,7 +282,26 @@ export default function YetkiliPaneliPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="font-bold text-white text-sm">{m.nickname || m.username}</h4>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h4 className="font-bold text-white text-sm">{m.nickname || m.username}</h4>
+                        {m.staffTitle ? (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-bold">
+                            {m.staffTitle}
+                          </span>
+                        ) : m.roles?.includes(ROLES.WHITELIST) ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
+                            Whitelist
+                          </span>
+                        ) : m.roles?.includes(ROLES.KAYITSIZ) ? (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold">
+                            Kayıtsız
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded bg-gray-500/20 text-gray-400 border border-gray-500/30 text-[9px] font-bold">
+                            Onaysız
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5">Roblox: {m.robloxName}</p>
                     </div>
 
@@ -359,7 +382,26 @@ export default function YetkiliPaneliPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-bold tracking-wider text-blue-400">Seçili Hedef Üye</span>
-                      <h4 className="font-bold text-white text-sm">{selectedMember.nickname || selectedMember.username} ({selectedMember.robloxName})</h4>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <h4 className="font-bold text-white text-sm">{selectedMember.nickname || selectedMember.username} ({selectedMember.robloxName})</h4>
+                        {selectedMember.staffTitle ? (
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold">
+                            👑 {selectedMember.staffTitle}
+                          </span>
+                        ) : selectedMember.roles?.includes(ROLES.WHITELIST) ? (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+                            ✅ Whitelist
+                          </span>
+                        ) : selectedMember.roles?.includes(ROLES.KAYITSIZ) ? (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                            📝 Kayıtsız Üye
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 text-[10px] font-bold">
+                            ⚠️ Kayıtsız / Onaysız
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-black/40 text-blue-300 border border-blue-500/20">
                       ID: {selectedMember.id}
