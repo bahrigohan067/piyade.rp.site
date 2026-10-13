@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           { name: 'İşlem Yapan', value: `<@${session.id}>`, inline: true },
           { name: 'İhlal / Sebep', value: sozluReason, inline: false },
         ],
-        footer: { text: '© 2026 PRP' },
+        footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
         timestamp: now.toISOString(),
       };
       await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, sozluEmbed, baseUrl);
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
           { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
           { name: 'Sebep', value: sozluReason, inline: false },
         ],
-        footer: { text: 'Piyade RP Web Paneli • © 2026 PRP' },
+        footer: { text: `Uyarı ID: #${uyariId} • Piyade RP Web Paneli • © 2026 PRP` },
         timestamp: now.toISOString(),
       };
       await sendDiscordEmbedWithLogo(CHANNELS.SICIL_LOG, botToken, undefined, sicilEmbed, baseUrl);
@@ -199,6 +199,7 @@ export async function POST(request: NextRequest) {
         aciklama: sozluReason,
         yetkili_id: session.id,
         sonuc: 'Sözlü Uyarı Verildi',
+        uyari_id: uyariId,
       });
 
       return NextResponse.json({
@@ -442,6 +443,7 @@ export async function POST(request: NextRequest) {
       aciklama: rule.description,
       yetkili_id: session.id,
       sonuc: sonucMetni || `Uyarı ${newTier} rolü verildi.`,
+      uyari_id: uyariId,
     });
 
     return NextResponse.json({

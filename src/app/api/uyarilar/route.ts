@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
           special: null,
           reason: u.aciklama,
           action: `Uyarı Kademe ${userData.kademe}`,
-          date: u.tarih,
+          timestamp: u.tarih,
           expiryDate: u.bitis_tarihi,
           proofUrl: u.kanit_url,
           isVerbal: u.madde === 'SÖZLÜ',

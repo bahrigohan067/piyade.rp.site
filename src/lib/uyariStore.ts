@@ -28,6 +28,7 @@ export interface SicilEntry {
   aciklama: string;
   yetkili_id: string | number;
   sonuc: string;
+  uyari_id?: string;
 }
 
 export type UyariDatabase = Record<string, UserUyariData>;
@@ -275,3 +276,91 @@ export function resetUserWarnings(userId: string): void {
     saveUyariDatabase(db);
   }
 }
+
+export function removeWarning(
+  userId: string,
+  uyariId: string,
+  newPoints?: number,
+  newTier?: number
+): UserUyariData | null {
+  const db = loadUyariDatabase();
+  const uid = String(userId);
+  if (!db[uid]) return null;
+
+  const cleanId = uyariId.toUpperCase().replace('#', '');
+  db[uid].uyarilar = (db[uid].uyarilar || []).filter((u) => u.id !== cleanId);
+
+  if (newPoints !== undefined) {
+    db[uid].toplam_puan = Math.max(0, newPoints);
+  } else {
+    db[uid].toplam_puan = db[uid].uyarilar.reduce((acc, curr) => acc + (curr.puan || 0), 0);
+  }
+
+  if (newTier !== undefined) {
+    db[uid].kademe = Math.max(0, newTier);
+  } else {
+    db[uid].kademe = hesaplaKademe(db[uid].toplam_puan);
+  }
+
+  if (db[uid].kademe < 5) {
+    db[uid].jail_bitis = null;
+  }
+
+  if (db[uid].uyarilar.length > 0) {
+    db[uid].son_uyari_tarihi = db[uid].uyarilar[db[uid].uyarilar.length - 1].tarih;
+  } else {
+    db[uid].son_uyari_tarihi = null;
+  }
+
+  saveUyariDatabase(db);
+  return db[uid];
+}
+
+export function removeSicilRecordByUyariOrMadde(
+  userId: string,
+  uyariId?: string,
+  madde?: string
+): void {
+  const db = loadSicilDatabase();
+  const uid = String(userId);
+  if (!db[uid] || db[uid].length === 0) return;
+
+  const records = db[uid];
+  let removed = false;
+
+  // 1. Uyarının ID'sine göre eşleşeni bul ve sil
+  if (uyariId) {
+    const cleanId = uyariId.toUpperCase().replace('#', '');
+    for (let i = records.length - 1; i >= 0; i--) {
+      const rec = records[i];
+      if (
+        rec.uyari_id === cleanId ||
+        (rec.aciklama && rec.aciklama.includes(cleanId)) ||
+        (rec.sonuc && rec.sonuc.includes(cleanId))
+      ) {
+        records.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+  }
+
+  // 2. ID ile bulunamadıysa kural maddesine göre (en yeniden en eskiye) sil
+  if (!removed && madde) {
+    for (let i = records.length - 1; i >= 0; i--) {
+      if (records[i].madde === madde) {
+        records.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+  }
+
+  // 3. Hiçbiri eşleşmediyse ve son kayıt varsa son kaydı çıkar
+  if (!removed && records.length > 0) {
+    records.pop();
+  }
+
+  saveSicilDatabase(db);
+}
+
