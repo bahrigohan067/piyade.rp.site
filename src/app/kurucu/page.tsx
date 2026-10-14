@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { ROLES, RULES, SAFEZONES, STAFF_ROLE_TITLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
+import ProofImageUploader from '@/components/ProofImageUploader';
 import { getCachedSession, syncSession, getAuthHeaders } from '@/lib/clientAuth';
 
 interface MemberRecord {
@@ -69,6 +70,7 @@ export default function KurucuPaneliPage() {
   const [warnRuleId, setWarnRuleId] = useState('RM14');
   const [warnReason, setWarnReason] = useState('');
   const [warnProof, setWarnProof] = useState('');
+  const [warnProofImage, setWarnProofImage] = useState<string | null>(null);
   const [submittingWarn, setSubmittingWarn] = useState(false);
   const [warnSuccess, setWarnSuccess] = useState<string | null>(null);
   const [warnError, setWarnError] = useState<string | null>(null);
@@ -182,6 +184,7 @@ export default function KurucuPaneliPage() {
           ruleId: warnRuleId,
           reason: warnReason,
           proofUrl: warnProof,
+          proofImage: warnProofImage,
         }),
       });
 
@@ -190,6 +193,7 @@ export default function KurucuPaneliPage() {
         setWarnSuccess(d.message || '✅ Uyarı başarıyla Discord botuna iletildi!');
         setWarnReason('');
         setWarnProof('');
+        setWarnProofImage(null);
         setShowWarningModal(false);
         loadAllData();
       } else {
@@ -721,16 +725,13 @@ export default function KurucuPaneliPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-gray-400 block mb-1">Kanıt Linki (Opsiyonel)</label>
-                <input
-                  type="url"
-                  value={warnProof}
-                  onChange={(e) => setWarnProof(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder:text-gray-500"
-                />
-              </div>
+              <ProofImageUploader
+                imageValue={warnProofImage}
+                urlValue={warnProof}
+                onImageChange={setWarnProofImage}
+                onUrlChange={setWarnProof}
+                theme="purple"
+              />
 
               <div className="flex justify-end gap-3 pt-2">
                 <button

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Shield, AlertTriangle, Users, LogOut, ExternalLink } from 'lucide-react';
+import { Shield, AlertTriangle, Users, LogOut, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { ROLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
 
@@ -286,7 +286,8 @@ export default function OyuncuPaneliPage() {
                     <th className="py-2.5 px-3">Ceza Puanı</th>
                     <th className="py-2.5 px-3">İşlem Yapan Yetkili</th>
                     <th className="py-2.5 px-3">Tarih</th>
-                    <th className="py-2.5 px-3 rounded-r-lg">Gerekçe</th>
+                    <th className="py-2.5 px-3">Gerekçe</th>
+                    <th className="py-2.5 px-3 rounded-r-lg">Kanıt</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-gray-300">
@@ -300,6 +301,21 @@ export default function OyuncuPaneliPage() {
                       <td className="py-3 px-3">{w.staffName}</td>
                       <td className="py-3 px-3 text-gray-400">{new Date(w.timestamp).toLocaleDateString('tr-TR')}</td>
                       <td className="py-3 px-3 text-gray-400 max-w-xs truncate">{w.reason}</td>
+                      <td className="py-3 px-3">
+                        {w.proofUrl ? (
+                          <a
+                            href={w.proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-semibold hover:bg-purple-500/30 transition-colors"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Görsel</span>
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-gray-600">—</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

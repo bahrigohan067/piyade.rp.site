@@ -23,7 +23,9 @@ async function sendDiscordEmbedWithLogo(
   botToken: string,
   content: string | undefined,
   embed: any,
-  baseUrl: string
+  baseUrl: string,
+  proofBuffer?: Buffer | null,
+  proofFilename: string = 'kanit.png'
 ): Promise<{ ok: boolean; messageId?: string }> {
   const logoPath = path.join(process.cwd(), 'public', 'uyari_logo.png');
   let logoBuffer: Buffer | null = null;
@@ -35,27 +37,37 @@ async function sendDiscordEmbedWithLogo(
     console.error('Error reading uyari_logo.png:', e);
   }
 
-  // 1. Primary: Attach uyari_logo.png via multipart/form-data with attachment://uyari_logo.png thumbnail
-  if (logoBuffer) {
+  // 1. Primary: Attach files via multipart/form-data
+  if (logoBuffer || proofBuffer) {
     try {
       const formData = new FormData();
-      const blob = new Blob([new Uint8Array(logoBuffer)], { type: 'image/png' });
-      formData.append('files[0]', blob, 'uyari_logo.png');
+      const attachmentsList: any[] = [];
+      let fileIdx = 0;
+
+      if (logoBuffer) {
+        const blobLogo = new Blob([new Uint8Array(logoBuffer)], { type: 'image/png' });
+        formData.append(`files[${fileIdx}]`, blobLogo, 'uyari_logo.png');
+        attachmentsList.push({ id: fileIdx, filename: 'uyari_logo.png' });
+        embed.thumbnail = { url: 'attachment://uyari_logo.png' };
+        fileIdx++;
+      } else {
+        embed.thumbnail = { url: `${baseUrl}/uyari_logo.png` };
+      }
+
+      if (proofBuffer) {
+        const isJpg = proofFilename.toLowerCase().endsWith('.jpg') || proofFilename.toLowerCase().endsWith('.jpeg');
+        const mimeType = isJpg ? 'image/jpeg' : 'image/png';
+        const blobProof = new Blob([new Uint8Array(proofBuffer)], { type: mimeType });
+        formData.append(`files[${fileIdx}]`, blobProof, proofFilename);
+        attachmentsList.push({ id: fileIdx, filename: proofFilename });
+        embed.image = { url: `attachment://${proofFilename}` };
+        fileIdx++;
+      }
 
       const payload = {
         content: content || '',
-        embeds: [
-          {
-            ...embed,
-            thumbnail: { url: 'attachment://uyari_logo.png' },
-          },
-        ],
-        attachments: [
-          {
-            id: 0,
-            filename: 'uyari_logo.png',
-          },
-        ],
+        embeds: [embed],
+        attachments: attachmentsList,
       };
 
       formData.append('payload_json', JSON.stringify(payload));
@@ -78,7 +90,7 @@ async function sendDiscordEmbedWithLogo(
     }
   }
 
-  // 2. Fallback: JSON with public URL thumbnail
+  // 2. Fallback: JSON with public URL thumbnail and image
   const fallbackPayload = {
     content: content || '',
     embeds: [
@@ -134,7 +146,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { type, targetUserId, targetUsername, ruleId, reason, proofUrl } = body;
+    const { type, targetUserId, targetUsername, ruleId, reason, proofUrl, proofImage } = body;
 
     if (!targetUserId) {
       return NextResponse.json({ error: 'Lütfen uyarı verilecek üyeyi seçin.' }, { status: 400 });
@@ -156,6 +168,33 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = getBaseUrl(request);
 
+    // Kanıt görseli işleme (Cihazdan yüklenen veya panodan yapıştırılan base64 görsel)
+    let proofBuffer: Buffer | null = null;
+    let proofFilename = `${uyariId}_kanit.png`;
+    let savedKanitUrl: string | null = proofUrl || null;
+
+    if (proofImage && typeof proofImage === 'string') {
+      try {
+        const match = proofImage.match(/^data:image\/([a-zA-Z0-9+.-]+);base64,(.+)$/);
+        if (match && match[2]) {
+          const rawExt = match[1].toLowerCase();
+          const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : rawExt;
+          proofFilename = `${uyariId}_kanit.${ext}`;
+          proofBuffer = Buffer.from(match[2], 'base64');
+
+          // public/uploads/kanit dizinine kalıcı olarak kaydet
+          const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'kanit');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          fs.writeFileSync(path.join(uploadDir, proofFilename), proofBuffer);
+          savedKanitUrl = `${baseUrl}/uploads/kanit/${proofFilename}`;
+        }
+      } catch (e) {
+        console.error('Error saving proof image to disk:', e);
+      }
+    }
+
     // ──────────────────────────────────────────────
     // 1. SÖZLÜ UYARI İŞLEMİ (Botun Sözlü Uyarı Formatı)
     // ──────────────────────────────────────────────
@@ -163,18 +202,27 @@ export async function POST(request: NextRequest) {
       const sozluReason = reason || 'Sözlü uyarı kurallarına riayet edilmesi istendi.';
 
       // Discord #uyarılar kanalına bildirim (uyari_logo.png ile)
-      const sozluEmbed = {
+      const sozluFields = [
+        { name: 'Uyarı Alan', value: `<@${targetUserId}>`, inline: true },
+        { name: 'İşlem Yapan', value: `<@${session.id}>`, inline: true },
+        { name: 'İhlal / Sebep', value: sozluReason, inline: false },
+      ];
+      if (savedKanitUrl) {
+        sozluFields.push({ name: '📎 Kanıt', value: `[Kanıtı Görüntüle](${savedKanitUrl})`, inline: false });
+      }
+
+      const sozluEmbed: any = {
         title: '⚠️ Sözlü Uyarı!',
         color: 0xf39c12, // Turuncu
-        fields: [
-          { name: 'Uyarı Alan', value: `<@${targetUserId}>`, inline: true },
-          { name: 'İşlem Yapan', value: `<@${session.id}>`, inline: true },
-          { name: 'İhlal / Sebep', value: sozluReason, inline: false },
-        ],
+        fields: sozluFields,
         footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
         timestamp: now.toISOString(),
       };
-      await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, sozluEmbed, baseUrl);
+      if (!proofBuffer && proofUrl) {
+        sozluEmbed.image = { url: proofUrl };
+      }
+
+      await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, sozluEmbed, baseUrl, proofBuffer, proofFilename);
 
       // Discord #sicil-log kanalına bildirim
       const sicilEmbed = {
@@ -206,6 +254,7 @@ export async function POST(request: NextRequest) {
         success: true,
         message: `✅ #${uyariId} Sözlü Uyarı <@${targetUserId}> kişisine verildi ve Discord kanalına iletildi!`,
         uyariId,
+        kanitUrl: savedKanitUrl,
       });
     }
 
@@ -377,11 +426,11 @@ export async function POST(request: NextRequest) {
       `**${rolesMentionStr}**\n\n` +
       `***\n\n` +
       `📎 **Kanıt**\n` +
-      `Görsel Kanıtı: ${proofUrl ? `[Resim](${proofUrl})` : '*Eklenmedi*'}`
+      `Görsel Kanıtı: ${savedKanitUrl ? `[Kanıt Görseli](${savedKanitUrl})` : proofUrl ? `[Link](${proofUrl})` : '*Eklenmedi*'}`
     );
 
     // Discord #uyarılar kanalına master log mesajı gönder (uyari_logo.png thumbnail ile)
-    const masterEmbed = {
+    const masterEmbed: any = {
       title: '⚠️ Uyarı Var!!!',
       color: 0xe74c3c, // Kırmızı
       description: embedDesc,
@@ -390,22 +439,41 @@ export async function POST(request: NextRequest) {
       ],
       footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
       timestamp: now.toISOString(),
-      image: proofUrl ? { url: proofUrl } : undefined,
     };
+    if (!proofBuffer && (savedKanitUrl || proofUrl)) {
+      masterEmbed.image = { url: savedKanitUrl || proofUrl };
+    }
 
-    const logRes = await sendDiscordEmbedWithLogo(CHANNELS.UYARILAR, botToken, `<@${targetUserId}>`, masterEmbed, baseUrl);
+    const logRes = await sendDiscordEmbedWithLogo(
+      CHANNELS.UYARILAR,
+      botToken,
+      `<@${targetUserId}>`,
+      masterEmbed,
+      baseUrl,
+      proofBuffer,
+      proofFilename
+    );
 
     // Discord #sicil-log kanalına kayıt gönder (uyari_logo.png thumbnail ile)
+    const sicilFields = [
+      { name: 'Ceza Alan Kişi', value: `<@${targetUserId}>`, inline: true },
+      { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
+      { name: 'Kural İhlali', value: `**${rule.id}** — ${rule.description}`, inline: false },
+      { name: 'İşlem', value: `**${sonucMetni || 'Kayıt Yapıldı'}**`, inline: true },
+      { name: 'Puan', value: `+${addedPoints} (Toplam: ${newPoints})`, inline: true },
+    ];
+    if (savedKanitUrl || proofUrl) {
+      sicilFields.push({
+        name: 'Kanıt',
+        value: `[Kanıtı Aç](${savedKanitUrl || proofUrl})`,
+        inline: true,
+      });
+    }
+
     const sicilEmbed = {
       title: `📜 Sicil Kaydı — #${uyariId}`,
       color: 0xe74c3c,
-      fields: [
-        { name: 'Ceza Alan Kişi', value: `<@${targetUserId}>`, inline: true },
-        { name: 'Yetkili', value: `<@${session.id}> | ${staffTitle}`, inline: true },
-        { name: 'Kural İhlali', value: `**${rule.id}** — ${rule.description}`, inline: false },
-        { name: 'İşlem', value: `**${sonucMetni || 'Kayıt Yapıldı'}**`, inline: true },
-        { name: 'Puan', value: `+${addedPoints} (Toplam: ${newPoints})`, inline: true },
-      ],
+      fields: sicilFields,
       footer: { text: `Uyarı ID: #${uyariId} • © 2026 PRP` },
       timestamp: now.toISOString(),
     };
@@ -428,7 +496,7 @@ export async function POST(request: NextRequest) {
         yetkili_id: session.id,
         tarih: tarihStr,
         bitis_tarihi: bitisStr,
-        kanit_url: proofUrl || null,
+        kanit_url: savedKanitUrl || proofUrl || null,
         aktif: true,
         log_msg_id: logRes.messageId || null,
       },

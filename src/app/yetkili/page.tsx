@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { RULES, ROLES } from '@/lib/constants';
 import DashboardLayout from '@/components/DashboardLayout';
+import ProofImageUploader from '@/components/ProofImageUploader';
 import { getCachedSession, syncSession } from '@/lib/clientAuth';
 
 interface MemberRecord {
@@ -47,6 +48,7 @@ export default function YetkiliPaneliPage() {
   const [selectedRuleId, setSelectedRuleId] = useState('RM14');
   const [reasonText, setReasonText] = useState('');
   const [proofUrl, setProofUrl] = useState('');
+  const [proofImage, setProofImage] = useState<string | null>(null);
 
   // Status feedback
   const [submitting, setSubmitting] = useState(false);
@@ -153,6 +155,7 @@ export default function YetkiliPaneliPage() {
           ruleId: selectedRuleId,
           reason: reasonText,
           proofUrl,
+          proofImage,
         }),
       });
 
@@ -161,6 +164,7 @@ export default function YetkiliPaneliPage() {
         setSuccessAlert(data.message || '✅ İşlem başarıyla Discord botuna iletildi!');
         setReasonText('');
         setProofUrl('');
+        setProofImage(null);
         loadRealMembers(); // Refresh real members
       } else {
         setErrorAlert(data.error || 'Hata oluştu.');
@@ -555,17 +559,14 @@ export default function YetkiliPaneliPage() {
                   />
                 </div>
 
-                {/* Proof URL (Optional) */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">Kanıt Linki (İsteğe bağlı)</label>
-                  <input
-                    type="text"
-                    value={proofUrl}
-                    onChange={(e) => setProofUrl(e.target.value)}
-                    placeholder="https://streamable.com/... veya https://medal.tv/..."
-                    className="w-full px-4 py-2 bg-[#090b12] border border-white/10 rounded-xl text-xs text-gray-200 focus:outline-none focus:border-amber-500/50"
-                  />
-                </div>
+                {/* Kanıt Görseli / Dosyası */}
+                <ProofImageUploader
+                  imageValue={proofImage}
+                  urlValue={proofUrl}
+                  onImageChange={setProofImage}
+                  onUrlChange={setProofUrl}
+                  theme="amber"
+                />
 
                 {/* Submit Button */}
                 <button

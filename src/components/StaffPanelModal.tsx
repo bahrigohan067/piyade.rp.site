@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, ShieldCheck, UserCheck, Send, CheckCircle2, Trash2, Search } from 'lucide-react';
 import { RULES } from '@/lib/constants';
+import ProofImageUploader from './ProofImageUploader';
 
 interface StaffPanelModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export default function StaffPanelModal({ isOpen, onClose }: StaffPanelModalProp
   const [selectedRuleId, setSelectedRuleId] = useState('RM14');
   const [reasonNote, setReasonNote] = useState('');
   const [proofUrl, setProofUrl] = useState('');
+  const [proofImage, setProofImage] = useState<string | null>(null);
   const [submittedAlert, setSubmittedAlert] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -153,17 +155,14 @@ export default function StaffPanelModal({ isOpen, onClose }: StaffPanelModalProp
               />
             </div>
 
-            {/* Proof URL */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">Kanıt Linki (Ekran Görüntüsü / Video)</label>
-              <input
-                type="text"
-                value={proofUrl}
-                onChange={(e) => setProofUrl(e.target.value)}
-                placeholder="https://streamable.com/... veya https://medal.tv/..."
-                className="w-full px-4 py-2 bg-[#090b12] border border-white/10 rounded-xl text-sm text-gray-200 focus:outline-none focus:border-amber-500/50"
-              />
-            </div>
+            {/* Kanıt Görseli / Yükleyici */}
+            <ProofImageUploader
+              imageValue={proofImage}
+              urlValue={proofUrl}
+              onImageChange={setProofImage}
+              onUrlChange={setProofUrl}
+              theme="amber"
+            />
 
             {/* Submit Button */}
             <button
