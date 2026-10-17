@@ -80,7 +80,7 @@ export default function RulesSection() {
               }`}
             >
               <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
-              <span>3. Kategori: Roleplay (RM1-RM17)</span>
+              <span>3. Kategori: Roleplay (RM1-RM18)</span>
             </button>
           </div>
 

@@ -464,7 +464,7 @@ export default function YetkiliPaneliPage() {
                             : 'bg-white/5 text-gray-400 hover:text-white'
                         }`}
                       >
-                        3. Kategori: Roleplay (RM1-RM17)
+                        3. Kategori: Roleplay (RM1-RM18)
                       </button>
                       <button
                         type="button"

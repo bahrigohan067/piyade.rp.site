@@ -221,7 +221,7 @@ export const RULES: RuleItem[] = [
   { id: "D2", points: 3, description: "Ses kanallarında ses panelini veya sohbet kanallarında sohbeti gereksiz yere çağırmak (spawnlamak).", category: "duzen" },
   { id: "D3", points: 3, description: "Önemli ses kanallarında sürekli yolculuk yaparak gereksiz bildirim yağmuruna sebep olmak.", category: "duzen" },
 
-  // 3. KATEGORİ: ROLEPLAY (RM) KURALLARI (RM1 - RM17)
+  // 3. KATEGORİ: ROLEPLAY (RM) KURALLARI (RM1 - RM18)
   { id: "RM1", points: 3, description: "Fail RP (FRP)", category: "roleplay" },
   { id: "RM2", points: 3, description: "Fear Roleplay (Korku Rolü Yapmama)", category: "roleplay" },
   { id: "RM3", points: 2, description: "Cop Trigger (Cop-Bait)", category: "roleplay" },
@@ -239,6 +239,7 @@ export const RULES: RuleItem[] = [
   { id: "RM15", points: 1, description: "Kaza RP Yapmama", category: "roleplay" },
   { id: "RM16", points: 2, description: "Refuse RP (Rolü Reddetmek)", category: "roleplay" },
   { id: "RM17", points: 5, description: "Abuse (Oyun Açığı Suistimali)", category: "roleplay" },
+  { id: "RM18", points: 2, description: "SafeZone İhlali", category: "roleplay" },
 ];
 
 export const YETKILI_MADDELER = [
