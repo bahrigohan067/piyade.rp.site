@@ -123,6 +123,40 @@ export default function RootLayout({
     <html lang="tr" className="dark scroll-smooth">
       <head>
         <meta name="google-site-verification" content="Lc7u2cS7YV48ucaNdewXH84pjA6wDGJ6G6h0LAJhNZM" />
+        <link rel="preload" href="/intro.wav" as="audio" type="audio/wav" fetchPriority="high" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if (window.location.pathname === '/' || window.location.pathname === '') {
+                    var audio = new Audio('/intro.wav');
+                    audio.preload = 'auto';
+                    audio.volume = 0.85;
+                    audio.loop = false;
+                    window.__piyadeIntro = audio;
+                    var p = audio.play();
+                    if (p && p.catch) {
+                      p.catch(function() {
+                        var playOnInteraction = function() {
+                          if (window.__piyadeIntro && window.__piyadeIntro.paused) {
+                            window.__piyadeIntro.play().catch(function() {});
+                          }
+                          ['click', 'pointerdown', 'touchstart', 'keydown'].forEach(function(ev) {
+                            window.removeEventListener(ev, playOnInteraction);
+                          });
+                        };
+                        ['click', 'pointerdown', 'touchstart', 'keydown'].forEach(function(ev) {
+                          window.addEventListener(ev, playOnInteraction, { once: true, passive: true });
+                        });
+                      });
+                    }
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
