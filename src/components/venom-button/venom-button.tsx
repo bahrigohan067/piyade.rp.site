@@ -222,6 +222,8 @@ export type VenomButtonProps = {
   variant?: "dark" | "light";
   /** Optional custom background override for the stage. */
   stageBackground?: string;
+  /** Whether to render a visible boxed card container around the stage. Default: false (seamless / transparent). */
+  boxed?: boolean;
 };
 
 export function VenomButton({
@@ -238,6 +240,7 @@ export function VenomButton({
   className,
   variant = "dark",
   stageBackground,
+  boxed = false,
 }: VenomButtonProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -902,9 +905,11 @@ export function VenomButton({
   }, [strands, sense, reach, release, cursor, autoplay, reduced]);
 
   const isDark = variant === "dark";
-  const defaultBg = isDark
-    ? "radial-gradient(ellipse at 50% 50%, rgba(126, 34, 206, 0.16) 0%, rgba(30, 27, 75, 0.45) 45%, rgba(9, 11, 18, 0.95) 100%)"
-    : "linear-gradient(180deg,#f5f4f6 0%,#efeef1 55%,#e4e3e6 100%)";
+  const defaultBg = boxed
+    ? isDark
+      ? "radial-gradient(ellipse at 50% 50%, rgba(126, 34, 206, 0.16) 0%, rgba(30, 27, 75, 0.45) 45%, rgba(9, 11, 18, 0.95) 100%)"
+      : "linear-gradient(180deg,#f5f4f6 0%,#efeef1 55%,#e4e3e6 100%)"
+    : "transparent";
   const resolvedBg = stageBackground || defaultBg;
 
   const handleButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -922,8 +927,10 @@ export function VenomButton({
     <div
       ref={stageRef}
       className={cn(
-        "relative flex w-full items-center justify-center overflow-hidden rounded-[24px]",
-        isDark && "border border-purple-500/20 shadow-2xl shadow-purple-950/30 backdrop-blur-xl",
+        "relative flex w-full items-center justify-center overflow-hidden",
+        boxed && isDark && "border border-purple-500/20 shadow-2xl shadow-purple-950/30 backdrop-blur-xl rounded-[24px]",
+        boxed && !isDark && "rounded-[24px]",
+        !boxed && "bg-transparent border-0 shadow-none",
         className
       )}
       style={{

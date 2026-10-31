@@ -56,18 +56,15 @@ export default function Hero() {
           </p>
         </div>
 
-        {/* Primary Action Button: Venom Symbiote Button */}
-        <div className="max-w-[620px] mx-auto mb-8 px-2">
+        {/* Primary Action Button: Venom Symbiote Button (Seamless / Box-free) */}
+        <div className="max-w-[700px] mx-auto -my-4 px-2">
           <VenomButton
             label="Discord ile Giriş Yap"
             href="/api/auth/discord"
             variant="dark"
-            height={260}
+            boxed={false}
+            height={230}
           />
-          <p className="text-center text-[11px] text-gray-500 mt-2 font-mono flex items-center justify-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-            İmleci butona yaklaştırın — Symbiote Reaksiyonu
-          </p>
         </div>
 
         {/* Secondary Quick Action Links */}
