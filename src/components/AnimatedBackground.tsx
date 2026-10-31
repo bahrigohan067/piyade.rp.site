@@ -1,8 +1,52 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
+import AeroShards from '@/components/AeroShards';
 
 export default function AnimatedBackground() {
+  const pathname = usePathname();
+  const isHomepage = pathname === '/';
+  const [webGpuFailed, setWebGpuFailed] = useState(false);
+
+  // Homepage: WebGPU-powered Aero Shards background (React Bits)
+  if (isHomepage && !webGpuFailed) {
+    return (
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#07080c]">
+        <AeroShards
+          className="w-full h-full"
+          shardColor="#896ABD"
+          accentColor="#A855F7"
+          material="glass"
+          placement="full"
+          markers="plus"
+          count={1300}
+          shardSize={1}
+          spread={1}
+          twist={1}
+          billow={1}
+          speed={0.9}
+          scale={1}
+          depthOfField={0.75}
+          glow={0.35}
+          grain={0.06}
+          vignette={0.35}
+          mouseInteraction={true}
+          pulseOnClick={true}
+          holdToGather={true}
+          parallax={0.5}
+          onError={(err) => {
+            console.warn('AeroShards WebGPU fallback triggered:', err);
+            setWebGpuFailed(true);
+          }}
+        />
+        {/* Soft dark vignette & tactical overlay to maintain high contrast for typography and UI */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#07080c]/30 via-transparent to-[#07080c]/85 pointer-events-none" />
+      </div>
+    );
+  }
+
+  // Sub-pages or fallback for browsers without WebGPU support: tactical ambient gradient orbs
   return (
     <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-[#07080c]">
       {/* Subtle tactical grid overlay */}
