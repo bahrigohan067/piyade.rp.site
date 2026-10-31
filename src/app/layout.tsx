@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '',
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || 'Lc7u2cS7YV48ucaNdewXH84pjA6wDGJ6G6h0LAJhNZM',
   },
 };
 
@@ -122,6 +122,7 @@ export default function RootLayout({
   return (
     <html lang="tr" className="dark scroll-smooth">
       <head>
+        <meta name="google-site-verification" content="Lc7u2cS7YV48ucaNdewXH84pjA6wDGJ6G6h0LAJhNZM" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
