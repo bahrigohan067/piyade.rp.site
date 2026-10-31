@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Shield, LogIn, BookOpen, Sparkles, Radio, AlertTriangle } from 'lucide-react';
+import { VenomButton } from '@/components/venom-button';
 
 export default function Hero() {
   const [rpStatus, setRpStatus] = React.useState<{ active: boolean; label: string }>({
@@ -55,23 +56,37 @@ export default function Hero() {
           </p>
         </div>
 
-        {/* Primary Action Button: ONLY Discord Giriş & Kurallar */}
-        <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
-          <Link
+        {/* Primary Action Button: Venom Symbiote Button */}
+        <div className="max-w-[620px] mx-auto mb-8 px-2">
+          <VenomButton
+            label="Discord ile Giriş Yap"
             href="/api/auth/discord"
-            className="px-8 sm:px-10 py-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-extrabold text-base shadow-2xl shadow-blue-600/30 flex items-center gap-3 transition-all hover:scale-105 active:scale-95"
-          >
-            <LogIn className="w-5 h-5 text-blue-200" />
-            <span>Discord ile Giriş Yap</span>
-          </Link>
+            variant="dark"
+            height={260}
+          />
+          <p className="text-center text-[11px] text-gray-500 mt-2 font-mono flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+            İmleci butona yaklaştırın — Symbiote Reaksiyonu
+          </p>
+        </div>
 
+        {/* Secondary Quick Action Links */}
+        <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
           <a
             href="#kurallar"
-            className="px-7 py-4 rounded-2xl glass-card hover:bg-white/10 text-gray-200 font-bold text-base border border-white/10 flex items-center gap-2.5 transition-all hover:scale-105 active:scale-95"
+            className="px-6 py-3 rounded-xl glass-card hover:bg-white/10 text-gray-200 font-semibold text-sm border border-white/10 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md"
           >
-            <BookOpen className="w-5 h-5 text-blue-400" />
+            <BookOpen className="w-4 h-4 text-purple-400" />
             <span>Sunucu Kuralları</span>
           </a>
+
+          <Link
+            href="/kayit"
+            className="px-6 py-3 rounded-xl glass-card hover:bg-white/10 text-gray-200 font-semibold text-sm border border-white/10 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-md"
+          >
+            <Shield className="w-4 h-4 text-emerald-400" />
+            <span>Whitelist Kayıt</span>
+          </Link>
         </div>
 
         {/* Live Metrics Grid */}
