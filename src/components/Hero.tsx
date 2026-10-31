@@ -42,17 +42,17 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Hero Title */}
+        {/* Hero Title - SEO Optimized for "Piyade RP" */}
         <div className="text-center max-w-4xl mx-auto mb-8">
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.1] mb-6">
-            Liberty County'nin <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-500 text-glow-blue">
-              En Prestijli & Düzenli
+              Piyade RP
             </span> <br />
-            Roleplay Sistemi
+            Liberty County'nin <br />
+            En Prestijli Roleplay Sistemi
           </h1>
           <p className="text-base sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Discord botumuz ve oyun sunucumuzla birebir senkronize çalışan, şeffaf sicil takipli, canlı radarlı ve güvenli roleplay merkezi.
+            <strong>Piyade Roleplay</strong>; Discord botumuz ve Roblox ER:LC oyun sunucumuzla birebir senkronize çalışan, şeffaf sicil takipli, canlı radarlı ve güvenli roleplay merkezi.
           </p>
         </div>
 
