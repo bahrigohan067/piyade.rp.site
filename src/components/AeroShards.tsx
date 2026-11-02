@@ -33,6 +33,10 @@ export interface AeroShardsProps {
   className?: string;
   style?: CSSProperties;
   onError?: (error: Error) => void;
+  /** Called once, after the first frames have actually been rendered. */
+  onReady?: () => void;
+  /** Called roughly once per second of active rendering with the measured frames per second. */
+  onStats?: (fps: number) => void;
 }
 
 type RGB = [number, number, number];
@@ -1035,11 +1039,17 @@ export default function AeroShards({
   dpr = 2,
   className = '',
   style,
-  onError
+  onError,
+  onReady,
+  onStats
 }: AeroShardsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const onStatsRef = useRef(onStats);
+  onStatsRef.current = onStats;
 
   const settings = {
     shard: parseColor(shardColor, [0.54, 0.42, 0.74]) ?? [0.54, 0.42, 0.74],
@@ -1082,6 +1092,11 @@ export default function AeroShards({
     let disposed = false;
     let gpu: Awaited<ReturnType<typeof init>> | null = null;
     let raf = 0;
+    let renderedFrames = 0;
+    let readySent = false;
+    let statStart = 0;
+    let statLast = 0;
+    let statFrames = 0;
     const cleanups: Array<() => void> = [];
 
     const fail = (error: unknown) => {
@@ -2128,6 +2143,26 @@ export default function AeroShards({
         if (state.quiet > 30) return;
         resize();
         render(s, dt, reduced);
+
+        // Health signals for the background manager (first-frame proof + live frame rate).
+        renderedFrames += 1;
+        if (!readySent && renderedFrames >= 3) {
+          readySent = true;
+          onReadyRef.current?.();
+        }
+        if (statLast === 0 || now - statLast > 250) {
+          // First frame or resumed after a pause: start a fresh measurement window.
+          statStart = now;
+          statFrames = 0;
+        } else {
+          statFrames += 1;
+          if (now - statStart >= 1000) {
+            onStatsRef.current?.((statFrames * 1000) / (now - statStart));
+            statStart = now;
+            statFrames = 0;
+          }
+        }
+        statLast = now;
       };
 
       const local = (event: PointerEvent) => {

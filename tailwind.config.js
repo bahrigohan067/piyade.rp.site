@@ -27,8 +27,13 @@ module.exports = {
         'float-slow': 'floatSlow 8s ease-in-out infinite',
         'float-reverse': 'floatReverse 10s ease-in-out infinite',
         'pulse-glow': 'pulseGlow 4s ease-in-out infinite',
+        'poster-breathe': 'posterBreathe 16s ease-in-out infinite',
       },
       keyframes: {
+        posterBreathe: {
+          '0%, 100%': { transform: 'scale(1.0) translate(0px, 0px)' },
+          '50%': { transform: 'scale(1.03) translate(-8px, -6px)' },
+        },
         gradientPulse: {
           '0%, 100%': { transform: 'scale(1) rotate(0deg)', opacity: '0.6' },
           '50%': { transform: 'scale(1.2) rotate(180deg)', opacity: '0.85' },

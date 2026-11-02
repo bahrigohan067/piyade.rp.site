@@ -124,6 +124,22 @@ export default function RootLayout({
       <head>
         <meta name="google-site-verification" content="Lc7u2cS7YV48ucaNdewXH84pjA6wDGJ6G6h0LAJhNZM" />
         <link rel="preload" href="/intro.wav" as="audio" type="audio/wav" fetchPriority="high" />
+        <link
+          rel="preload"
+          as="image"
+          href="/bg/aero-desktop.webp"
+          type="image/webp"
+          media="(min-width: 768px)"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="/bg/aero-mobile.webp"
+          type="image/webp"
+          media="(max-width: 767px)"
+          fetchPriority="high"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
