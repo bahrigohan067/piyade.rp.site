@@ -1,154 +1,83 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { usePathname } from 'next/navigation';
 import PosterLayer from './PosterLayer';
 import LiteShards from './LiteShards';
 import {
   evaluateDevice,
-  saveDecision,
-  getUrlOverride,
+  clearLegacyCache,
   type BackgroundTier,
-  type QualityLevel,
 } from './deviceProfile';
 import { getQualityConfig } from './qualityPresets';
 
-// Lazy-load the heavy 2200-line WebGPU engine only when Tier 3 is actually needed!
 const AeroShards = dynamic(() => import('@/components/AeroShards'), {
   ssr: false,
 });
 
 /**
- * BackgroundManager (4-Tier Progressive Enhancement Controller)
+ * BackgroundManager — Universal AeroShards Controller
  *
- * Kat 0: Statik Poster (Her cihazda kesin görünür, sıfır JS gecikmesi)
- * Kat 1: Hafif CSS Hareketi (Nefes alma / yavaş süzülme)
- * Kat 2: Canvas 2D LiteShards (WebGPU olmayan cihazlar için akıcı cam parçacıkları)
- * Kat 3: WebGPU AeroShards (Yüksek / Orta / Düşük kalite profilli tam efekt)
+ * Ensures EVERY device (Desktop, Mobile iOS/Android, Tablets, Discord/Instagram
+ * in-app browsers, Safari, Firefox, Chrome, Edge) displays the exact
+ * `aero-shards` 3D glass prism profile from:
+ * https://www.reactbits.dev/tools/background-studio?bg=aero-shards
+ *
+ * - PosterLayer sits underneath at z-index -20 so the first millisecond is never black.
+ * - AeroShards runs on top via Dual-Engine (WebGPU native + WebGL2 1:1 shader port).
+ * - Soft dark vignette overlay preserves text readability on all UI cards.
  */
 export default function BackgroundManager() {
-  const pathname = usePathname();
-  const isHomepage = pathname === '/';
-
-  // Mount flag
   const [mounted, setMounted] = useState(false);
-
-  // Active tiers and quality
-  const [tier, setTier] = useState<BackgroundTier>(0);
-  const [quality, setQuality] = useState<QualityLevel>('medium');
+  const [tier, setTier] = useState<BackgroundTier>(3);
   const [isMobile, setIsMobile] = useState(false);
-
-  // WebGPU lifecycle status
-  const [webGpuReady, setWebGpuReady] = useState(false);
-  const [webGpuFailed, setWebGpuFailed] = useState(false);
-
-  // Performance tracking
-  const lowFpsCountRef = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [aeroReady, setAeroReady] = useState(false);
+  const [aeroFailed, setAeroFailed] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-
+    clearLegacyCache();
     const decision = evaluateDevice();
     setIsMobile(decision.isMobile);
-    setQuality(decision.quality);
     setTier(decision.tier);
-
-    // If Tier 3 (WebGPU) was chosen, set a 3.5s fallback safety timer.
-    // If WebGPU doesn't produce a verified rendered frame within 3.5 seconds,
-    // seamlessly downgrade to Kat 2 (Canvas 2D) so the screen NEVER goes black.
-    if (decision.tier === 3) {
-      timeoutRef.current = setTimeout(() => {
-        setWebGpuReady((ready) => {
-          if (!ready) {
-            console.warn('[Piyade Background] WebGPU timeout (3.5s). Falling back to Tier 2.');
-            setWebGpuFailed(true);
-            setTier(2);
-            saveDecision(2, 'low');
-          }
-          return ready;
-        });
-      }, 3500);
-    }
-
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
+    setMounted(true);
   }, []);
 
-  // WebGPU successful first-frame signal
-  const handleWebGpuReady = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setWebGpuReady(true);
-    saveDecision(3, quality);
+  const handleAeroReady = () => {
+    setAeroReady(true);
   };
 
-  // WebGPU runtime error handler
-  const handleWebGpuError = (error: Error) => {
-    console.warn('[Piyade Background] WebGPU runtime error:', error);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setWebGpuFailed(true);
+  const handleAeroError = (error: Error) => {
+    console.warn('[Piyade Background] Both WebGPU and WebGL2 failed:', error);
+    setAeroFailed(true);
     setTier(2);
-    saveDecision(2, 'low');
   };
 
-  // Dynamic FPS feedback
-  const handleStats = (fps: number) => {
-    if (fps < 28) {
-      lowFpsCountRef.current += 1;
-      if (lowFpsCountRef.current >= 2) {
-        // Sustained low FPS detected: step down quality
-        lowFpsCountRef.current = 0;
-        if (quality === 'high') {
-          setQuality('medium');
-          saveDecision(3, 'medium');
-        } else if (quality === 'medium') {
-          setQuality('low');
-          saveDecision(3, 'low');
-        } else {
-          // Low quality still stuttering -> switch to lightweight Canvas 2D
-          setTier(2);
-          saveDecision(2, 'low');
-        }
-      }
-    } else {
-      lowFpsCountRef.current = 0;
-    }
-  };
-
-  // Subpages (/panel, /yetkili, /kurucu, /kayit):
-  // Use Kat 0 + Kat 1 (Amethyst poster with gentle CSS motion).
-  // Zero CPU load, matches brand theme, keeps tables and forms blazing fast.
-  if (!isHomepage) {
-    return <PosterLayer animated={true} />;
-  }
-
-  const aeroProps = getQualityConfig(quality, isMobile);
+  const aeroProps = getQualityConfig('high', isMobile);
 
   return (
     <>
-      {/* KAT 0 & KAT 1: Base Poster Layer (ALWAYS rendered underneath; guarantees zero black-screen) */}
-      <PosterLayer animated={tier >= 1} />
+      {/* Instant 0ms Poster Underlay: prevents any black flash while 3D shaders compile */}
+      <PosterLayer animated={!aeroReady} />
 
-      {/* KAT 2: Canvas 2D LiteShards (When WebGPU is unsupported or throttled) */}
-      {mounted && tier === 2 && <LiteShards />}
+      {/* Fallback Canvas 2D only if both WebGPU and WebGL2 are completely unavailable */}
+      {mounted && (tier === 2 || aeroFailed) && <LiteShards />}
 
-      {/* KAT 3: Full WebGPU AeroShards (When device is capable) */}
-      {mounted && tier === 3 && !webGpuFailed && (
+      {/* Universal 3D AeroShards Profile (WebGPU + WebGL2 1:1 Shader Engine) */}
+      {mounted && tier === 3 && !aeroFailed && (
         <div
-          className={`fixed inset-0 pointer-events-none -z-10 transition-opacity duration-700 ease-in-out ${
-            webGpuReady ? 'opacity-100' : 'opacity-0'
+          className={`fixed inset-0 pointer-events-none -z-10 overflow-hidden transition-opacity duration-500 ease-out ${
+            aeroReady ? 'opacity-100' : 'opacity-0'
           }`}
           style={{ height: '100lvh' }}
         >
           <AeroShards
             className="w-full h-full"
             {...aeroProps}
-            onReady={handleWebGpuReady}
-            onError={handleWebGpuError}
-            onStats={handleStats}
+            onReady={handleAeroReady}
+            onError={handleAeroError}
           />
+          {/* Subtle top/bottom vignette to keep foreground text crisp */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#07080c]/25 via-transparent to-[#07080c]/80 pointer-events-none" />
         </div>
       )}
     </>
